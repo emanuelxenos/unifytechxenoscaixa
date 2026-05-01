@@ -55,29 +55,6 @@ class _CloseCashScreenState extends ConsumerState<CloseCashScreen> {
     final cashState = ref.watch(cashNotifierProvider);
     final sessao = cashState.sessao;
 
-    // Se houver erro, mostra o erro em vez de loading infinito
-    if (cashState.error != null) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, color: AppTheme.accentRed, size: 48),
-              const SizedBox(height: 16),
-              Text(cashState.error!, style: const TextStyle(color: Colors.white)),
-              const SizedBox(height: 24),
-              GlassButton.outline(label: 'Voltar', onPressed: () => Navigator.of(context).pushReplacementNamed('/sale')),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Se a sessão sumiu e não há erro, mostra loader apenas se estiver carregando
-    if (sessao == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF0B0E1A), Color(0xFF141829)], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
@@ -93,20 +70,39 @@ class _CloseCashScreenState extends ConsumerState<CloseCashScreen> {
                     Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppTheme.accentOrange.withOpacity(0.12), shape: BoxShape.circle), child: const Icon(Icons.lock_rounded, color: AppTheme.accentOrange, size: 36)),
                     const SizedBox(height: 16),
                     const Text('Fechamento de Caixa', style: TextStyle(color: AppTheme.onBackground, fontSize: 24, fontWeight: FontWeight.w700)),
-                    if (sessao != null) ...[const SizedBox(height: 4), Text('Sessão: ${sessao.codigoSessao}', style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13))],
-                    const SizedBox(height: 28),
-                    if (sessao != null) ...[_buildSummaryGrid(sessao), const SizedBox(height: 24)],
-                    GlassInput(controller: _saldoController, label: 'Saldo Contado (R\$)', hint: '0,00', prefixIcon: Icons.calculate_rounded, keyboardType: TextInputType.number, textAlign: TextAlign.right, fontSize: 20, onChanged: (_) => setState(() {})),
-                    if (sessao != null && _saldoContado > 0) ...[const SizedBox(height: 12), _buildDifference(sessao)],
+                    
+                    if (cashState.isLoading && sessao == null) ...[
+                      const SizedBox(height: 40),
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 20),
+                      const Text('Carregando dados do caixa...', style: TextStyle(color: Colors.white70)),
+                    ] else if (cashState.error != null && sessao == null) ...[
+                      const SizedBox(height: 20),
+                      Text(cashState.error!, style: const TextStyle(color: AppTheme.accentRed)),
+                      const SizedBox(height: 20),
+                      GlassButton.outline(label: 'Tentar Novamente', onPressed: () => ref.read(cashNotifierProvider.notifier).checkStatus()),
+                    ] else ...[
+                      if (sessao != null) ...[
+                        const SizedBox(height: 4), 
+                        Text('Sessão: ${sessao.codigoSessao}', style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13)),
+                        const SizedBox(height: 28),
+                        _buildSummaryGrid(sessao),
+                        const SizedBox(height: 24),
+                      ],
+                      GlassInput(controller: _saldoController, label: 'Saldo Contado (R\$)', hint: '0,00', prefixIcon: Icons.calculate_rounded, keyboardType: TextInputType.number, textAlign: TextAlign.right, fontSize: 20, onChanged: (_) => setState(() {})),
+                      if (sessao != null && _saldoContado > 0) ...[const SizedBox(height: 12), _buildDifference(sessao)],
+                      const SizedBox(height: 16),
+                      GlassInput(controller: _senhaController, label: 'Senha do Supervisor', hint: 'Digite a senha', prefixIcon: Icons.admin_panel_settings_rounded, obscureText: true),
+                      const SizedBox(height: 16),
+                      GlassInput(controller: _obsController, label: 'Observação (opcional)', hint: 'Notas sobre o fechamento', prefixIcon: Icons.notes_rounded),
+                      const SizedBox(height: 28),
+                    ],
+                    
                     const SizedBox(height: 16),
-                    GlassInput(controller: _senhaController, label: 'Senha do Supervisor', hint: 'Digite a senha', prefixIcon: Icons.admin_panel_settings_rounded, obscureText: true),
-                    const SizedBox(height: 16),
-                    GlassInput(controller: _obsController, label: 'Observação (opcional)', hint: 'Notas sobre o fechamento', prefixIcon: Icons.notes_rounded),
-                    const SizedBox(height: 28),
                     Row(children: [
                       Expanded(child: GlassButton.outline(label: 'Voltar', icon: Icons.arrow_back_rounded, onPressed: () => Navigator.of(context).pushReplacementNamed('/sale'), height: 50)),
                       const SizedBox(width: 12),
-                      Expanded(flex: 2, child: GlassButton(label: 'Fechar Caixa', icon: Icons.lock_rounded, gradient: AppTheme.warningGradient, onPressed: cashState.isLoading ? null : _fecharCaixa, isLoading: cashState.isLoading, height: 50, expanded: true)),
+                      Expanded(flex: 2, child: GlassButton(label: 'Fechar Caixa', icon: Icons.lock_rounded, gradient: AppTheme.warningGradient, onPressed: (cashState.isLoading || sessao == null) ? null : _fecharCaixa, isLoading: cashState.isLoading, height: 50, expanded: true)),
                     ]),
                   ],
                 ),
