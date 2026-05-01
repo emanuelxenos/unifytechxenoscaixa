@@ -29,12 +29,46 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   int? _selectedFormaId;
   double _valorTotal = 0;
 
+  final _valorFocus = FocusNode();
+
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_handleInternalKey);
     final saleState = ref.read(saleNotifierProvider);
     _valorTotal = saleState.total;
+    _selectedFormaId = 1; 
     _valorController.text = _valorTotal.toStringAsFixed(2).replaceAll('.', ',');
+    _valorFocus.requestFocus();
+  }
+
+  bool _handleInternalKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.escape) {
+      Navigator.of(context).pop();
+      return true;
+    }
+
+    if (key == LogicalKeyboardKey.f2) {
+      final isLoading = ref.read(saleNotifierProvider).isLoading;
+      if (isLoading) return true;
+
+      if (_restante <= 0.01 && _pagamentos.isNotEmpty) {
+        _confirm();
+      } else if (_selectedFormaId != null) {
+        _addPayment();
+      }
+      return true;
+    }
+
+    if (key == LogicalKeyboardKey.digit1) { _selectForma(1); return true; }
+    if (key == LogicalKeyboardKey.digit2) { _selectForma(2); return true; }
+    if (key == LogicalKeyboardKey.digit3) { _selectForma(3); return true; }
+    if (key == LogicalKeyboardKey.digit4) { _selectForma(4); return true; }
+
+    return false;
   }
 
   double get _totalPago => _pagamentos.fold(0.0, (s, p) => s + p.valor);
@@ -59,43 +93,42 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   void _removePayment(int index) => setState(() => _pagamentos.removeAt(index));
 
   Future<void> _confirm() async {
-    if (_restante > 0.01) { AppSnackbar.warning(context, 'Valor insuficiente. Faltam ${Formatters.currency(_restante)}'); return; }
+    final saleState = ref.read(saleNotifierProvider);
+    if (saleState.isLoading) return;
+
+    if (_restante > 0.01) { 
+      AppSnackbar.warning(context, 'Valor insuficiente. Faltam ${Formatters.currency(_restante)}'); 
+      return; 
+    }
+    
     final saleNotifier = ref.read(saleNotifierProvider.notifier);
     final pagamentos = _pagamentos.map((p) => CreatePaymentRequest(formaPagamentoId: p.formaPagamentoId, valor: p.valor)).toList();
-    final ok = await saleNotifier.finalizeSale(pagamentos);
-    if (!mounted) return;
-    if (ok) {
-      final saleState = ref.read(saleNotifierProvider);
-      Navigator.of(context).pop();
-      AppSnackbar.success(context, 'Venda #${saleState.lastSaleResponse?.numeroVenda ?? ""} finalizada!');
-    } else {
-      final saleState = ref.read(saleNotifierProvider);
-      AppSnackbar.error(context, saleState.error ?? 'Erro ao finalizar venda');
-    }
+    
+    await saleNotifier.finalizeSale(pagamentos);
+    // A SaleScreen detectará o sucesso e fechará este modal.
   }
 
   @override
-  void dispose() { _valorController.dispose(); super.dispose(); }
+  void dispose() { 
+    HardwareKeyboard.instance.removeHandler(_handleInternalKey);
+    _valorController.dispose(); 
+    _valorFocus.dispose();
+    super.dispose(); 
+  }
 
   @override
   Widget build(BuildContext context) {
     final saleState = ref.watch(saleNotifierProvider);
 
-    return Focus(
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent) return KeyEventResult.ignored;
-        if (event.logicalKey == LogicalKeyboardKey.escape) {
-          Navigator.of(context).pop();
-          return KeyEventResult.handled;
-        }
-        if (event.logicalKey == LogicalKeyboardKey.f2) {
-          if (_pagamentos.isNotEmpty && !saleState.isLoading) _confirm();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Dialog(
+    // AUTODESTRUIÇÃO: Cada instância deste modal se fecha ao detectar sucesso
+    ref.listen(saleNotifierProvider, (prev, next) {
+      if (next.lastSaleResponse != null && prev?.lastSaleResponse == null) {
+        Navigator.of(context).pop();
+        AppSnackbar.success(context, 'Venda #${next.lastSaleResponse?.numeroVenda} finalizada!');
+      }
+    });
+
+    return Dialog(
       backgroundColor: Colors.transparent, insetPadding: const EdgeInsets.all(40),
       child: Container(
         width: 560, constraints: const BoxConstraints(maxHeight: 640), decoration: AppTheme.glassCard(),
@@ -121,7 +154,20 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   const SizedBox(height: 20),
                   if (_selectedFormaId != null) ...[
                     Row(children: [
-                      Expanded(child: TextField(controller: _valorController, keyboardType: TextInputType.number, textAlign: TextAlign.right, style: const TextStyle(color: AppTheme.onBackground, fontSize: 24, fontWeight: FontWeight.w700), decoration: InputDecoration(labelText: 'Valor (R\$)', prefixIcon: const Icon(Icons.attach_money), suffixIcon: IconButton(icon: const Icon(Icons.add_circle, color: AppTheme.accentGreen), onPressed: _addPayment)), onSubmitted: (_) => _addPayment())),
+                      Expanded(child: TextField(
+                        controller: _valorController, 
+                        focusNode: _valorFocus,
+                        autofocus: true,
+                        keyboardType: TextInputType.number, 
+                        textAlign: TextAlign.right, 
+                        style: const TextStyle(color: AppTheme.onBackground, fontSize: 24, fontWeight: FontWeight.w700), 
+                        decoration: InputDecoration(
+                          labelText: 'Valor (R\$)', 
+                          prefixIcon: const Icon(Icons.attach_money), 
+                          suffixIcon: IconButton(icon: const Icon(Icons.add_circle, color: AppTheme.accentGreen), onPressed: _addPayment)
+                        ), 
+                        onSubmitted: (_) => _addPayment()
+                      )),
                     ]),
                     const SizedBox(height: 16),
                   ],
@@ -169,7 +215,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           ],
         ),
       ),
-    ),
     );
   }
 }

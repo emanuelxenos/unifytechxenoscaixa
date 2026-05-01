@@ -12,9 +12,11 @@ import 'package:unifytechxenoscaixa/presentation/widgets/app_snackbar.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/confirmation_dialog.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_button.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_input.dart';
+import 'package:unifytechxenoscaixa/presentation/widgets/product_search_dialog.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/shortcut_help_dialog.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/status_bar.dart';
 import 'package:unifytechxenoscaixa/presentation/views/payment/payment_screen.dart';
+import 'package:unifytechxenoscaixa/core/services/navigation_service.dart';
 
 class SaleScreen extends ConsumerStatefulWidget {
   const SaleScreen({super.key});
@@ -27,6 +29,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
   final _searchFocus = FocusNode();
   final _scrollController = ScrollController();
   bool _searchFocused = false;
+  bool _paymentDialogOpen = false;
 
   static const _headerStyle = TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5);
 
@@ -58,6 +61,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
 
   bool _handleGlobalKey(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
+    if (_paymentDialogOpen) return false; // Trava: ignora se houver modal aberto
     final key = event.logicalKey;
 
     if (key == LogicalKeyboardKey.f1) { ShortcutHelpDialog.show(context); return true; }
@@ -66,6 +70,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     if (key == LogicalKeyboardKey.f4) { _openMenu(); return true; }
     if (key == LogicalKeyboardKey.f5) { _showMovementDialog('sangria'); return true; }
     if (key == LogicalKeyboardKey.f6) { _showMovementDialog('suprimento'); return true; }
+    if (key == LogicalKeyboardKey.f7) { ProductSearchDialog.show(context); return true; }
     if (key == LogicalKeyboardKey.f8) { _closeCash(); return true; }
     if (key == LogicalKeyboardKey.f9) { Navigator.of(context).pushNamed('/settings'); return true; }
     if (key == LogicalKeyboardKey.escape) {
@@ -240,6 +245,13 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     final cashState = ref.watch(cashNotifierProvider);
     final saleState = ref.watch(saleNotifierProvider);
     final productState = ref.watch(productNotifierProvider);
+
+    // MONITOR REATIVO: Se a venda finalizou, fecha qualquer modal aberto e limpa o carrinho
+    ref.listen(saleNotifierProvider, (prev, next) {
+      if (next.error != null && next.error != prev?.error) {
+        AppSnackbar.error(context, next.error!);
+      }
+    });
 
     return Scaffold(
       body: Column(

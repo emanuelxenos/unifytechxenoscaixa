@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:unifytechxenoscaixa/core/theme/app_theme.dart';
+import 'package:unifytechxenoscaixa/core/services/navigation_service.dart';
 import 'package:unifytechxenoscaixa/presentation/views/splash/splash_screen.dart';
 import 'package:unifytechxenoscaixa/presentation/views/login/login_screen.dart';
 import 'package:unifytechxenoscaixa/presentation/views/open_cash/open_cash_screen.dart';
@@ -14,6 +15,7 @@ class PDVApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
+      navigatorKey: NavigationService.navigatorKey,
       title: 'UnifyTech PDV',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
