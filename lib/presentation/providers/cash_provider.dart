@@ -8,12 +8,14 @@ part 'cash_provider.g.dart';
 /// Estado do caixa
 class CashState {
   final CashSession? sessao;
+  final List<PhysicalCashRegister> physicalRegisters;
   final bool sessaoAtiva;
   final bool isLoading;
   final String? error;
 
   const CashState({
     this.sessao,
+    this.physicalRegisters = const [],
     this.sessaoAtiva = false,
     this.isLoading = false,
     this.error,
@@ -21,6 +23,7 @@ class CashState {
 
   CashState copyWith({
     CashSession? sessao,
+    List<PhysicalCashRegister>? physicalRegisters,
     bool? sessaoAtiva,
     bool? isLoading,
     String? error,
@@ -29,6 +32,7 @@ class CashState {
   }) {
     return CashState(
       sessao: clearSessao ? null : (sessao ?? this.sessao),
+      physicalRegisters: physicalRegisters ?? this.physicalRegisters,
       sessaoAtiva: sessaoAtiva ?? this.sessaoAtiva,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
@@ -50,9 +54,12 @@ class CashNotifier extends _$CashNotifier {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final status = await _cashRepo.status();
+      final physicals = await _cashRepo.listPhysicalRegisters();
+      
       state = state.copyWith(
         sessaoAtiva: status.sessaoAtiva,
         sessao: status.sessao,
+        physicalRegisters: physicals.isNotEmpty ? physicals : state.physicalRegisters,
         isLoading: false,
       );
     } catch (e) {

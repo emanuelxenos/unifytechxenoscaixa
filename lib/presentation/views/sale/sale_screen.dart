@@ -17,6 +17,7 @@ import 'package:unifytechxenoscaixa/presentation/widgets/shortcut_help_dialog.da
 import 'package:unifytechxenoscaixa/presentation/widgets/status_bar.dart';
 import 'package:unifytechxenoscaixa/presentation/views/payment/payment_screen.dart';
 import 'package:unifytechxenoscaixa/core/services/navigation_service.dart';
+import 'package:unifytechxenoscaixa/core/services/audio_service.dart';
 
 class SaleScreen extends ConsumerStatefulWidget {
   const SaleScreen({super.key});
@@ -73,6 +74,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     if (key == LogicalKeyboardKey.f7) { ProductSearchDialog.show(context); return true; }
     if (key == LogicalKeyboardKey.f8) { _closeCash(); return true; }
     if (key == LogicalKeyboardKey.f9) { Navigator.of(context).pushNamed('/settings'); return true; }
+    if (key == LogicalKeyboardKey.delete) { _showRemoveItemDialog(); return true; }
     if (key == LogicalKeyboardKey.escape) {
       if (_searchController.text.isNotEmpty) {
         _searchController.clear();
@@ -105,6 +107,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     final product = await productNotifier.searchByBarcode(query);
     if (product != null) {
       saleNotifier.addProduct(product);
+      AudioService().playSuccess();
       _searchController.clear();
       _searchFocus.requestFocus();
       _scrollToBottom();
@@ -114,9 +117,11 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
 
     final results = await productNotifier.searchByName(query);
     if (results.isEmpty) {
+      AudioService().playError();
       if (mounted) AppSnackbar.warning(context, 'Produto não encontrado');
     } else if (results.length == 1) {
       saleNotifier.addProduct(results.first);
+      AudioService().playSuccess();
       _searchController.clear();
       productNotifier.clearSearch();
       _scrollToBottom();
@@ -181,6 +186,68 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     );
   }
 
+  void _showRemoveItemDialog() {
+    final saleState = ref.read(saleNotifierProvider);
+    if (saleState.cart.isEmpty) {
+      AppSnackbar.warning(context, 'O carrinho está vazio');
+      return;
+    }
+
+    final itemNumberCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 300, decoration: AppTheme.glassCard(), padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.delete_sweep_rounded, color: AppTheme.accentRed, size: 32),
+              const SizedBox(height: 12),
+              const Text('Remover Item', style: TextStyle(color: AppTheme.onBackground, fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text('Digite o número do item (1 a ${saleState.cart.length})', style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13)),
+              const SizedBox(height: 20),
+              GlassInput(
+                controller: itemNumberCtrl, label: 'Nº do Item', hint: 'Ex: 1', 
+                prefixIcon: Icons.tag, keyboardType: TextInputType.number, 
+                autofocus: true,
+                onSubmitted: (val) {
+                  final n = int.tryParse(val) ?? 0;
+                  if (n > 0 && n <= saleState.cart.length) {
+                    ref.read(saleNotifierProvider.notifier).removeItem(n - 1);
+                    Navigator.pop(ctx);
+                    _searchFocus.requestFocus();
+                    AppSnackbar.success(context, 'Item #$n removido');
+                  } else {
+                    AppSnackbar.error(ctx, 'Número inválido');
+                  }
+                },
+              ),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(child: GlassButton.outline(label: 'Cancelar', onPressed: () => Navigator.pop(ctx), height: 40)),
+                const SizedBox(width: 12),
+                Expanded(child: GlassButton.danger(label: 'Remover', onPressed: () {
+                  final n = int.tryParse(itemNumberCtrl.text) ?? 0;
+                  if (n > 0 && n <= saleState.cart.length) {
+                    ref.read(saleNotifierProvider.notifier).removeItem(n - 1);
+                    Navigator.pop(ctx);
+                    _searchFocus.requestFocus();
+                  } else {
+                    AppSnackbar.error(ctx, 'Número inválido');
+                  }
+                }, height: 40)),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
   void _showMovementDialog(String tipo) {
     final valorCtrl = TextEditingController();
     final motivoCtrl = TextEditingController();
@@ -519,6 +586,20 @@ class _CartItemRow extends StatelessWidget {
               Expanded(flex: 2, child: Text('${item.quantidade}x', style: const TextStyle(color: AppTheme.onSurface, fontSize: 14), textAlign: TextAlign.center)),
               Expanded(flex: 3, child: Text(Formatters.currency(item.precoUnitario), style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13), textAlign: TextAlign.right)),
               Expanded(flex: 3, child: Text(Formatters.currency(item.subtotal), style: const TextStyle(color: AppTheme.primaryColor, fontSize: 14, fontWeight: FontWeight.w700), textAlign: TextAlign.right)),
+              
+              // Botão de remover (aparece apenas no hover)
+              SizedBox(
+                width: 40,
+                child: isHovered 
+                  ? IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.accentRed, size: 20),
+                      onPressed: onRemove,
+                      tooltip: 'Remover item',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    )
+                  : const SizedBox.shrink(),
+              ),
             ]),
           ),
         );

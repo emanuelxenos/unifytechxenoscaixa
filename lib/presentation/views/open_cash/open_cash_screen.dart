@@ -17,7 +17,7 @@ class OpenCashScreen extends ConsumerStatefulWidget {
 class _OpenCashScreenState extends ConsumerState<OpenCashScreen> {
   final _saldoController = TextEditingController(text: '0,00');
   final _obsController = TextEditingController();
-  int _selectedCaixaId = 1;
+  int? _selectedCaixaId;
 
   @override
   void initState() {
@@ -26,11 +26,16 @@ class _OpenCashScreenState extends ConsumerState<OpenCashScreen> {
   }
 
   void _abrirCaixa() async {
+    if (_selectedCaixaId == null) {
+      AppSnackbar.warning(context, 'Selecione um caixa físico');
+      return;
+    }
+
     final saldoText = _saldoController.text.replaceAll('.', '').replaceAll(',', '.');
     final saldo = double.tryParse(saldoText) ?? 0;
 
     await ref.read(cashNotifierProvider.notifier).abrirCaixa(
-      _selectedCaixaId, saldo, observacao: _obsController.text.trim(),
+      _selectedCaixaId!, saldo, observacao: _obsController.text.trim(),
     );
   }
 
@@ -56,10 +61,25 @@ class _OpenCashScreenState extends ConsumerState<OpenCashScreen> {
       if (next.error != null && next.error != previous?.error) {
         AppSnackbar.error(context, next.error!);
       }
+      
+      // Selecionar automático se houver apenas um caixa
+      if (next.physicalRegisters.length == 1 && _selectedCaixaId == null) {
+        setState(() {
+          _selectedCaixaId = next.physicalRegisters.first.id;
+        });
+      }
+      
+      // Fallback: Se não houver nenhum mas terminou de carregar, seleciona o ID 1 por segurança
+      if (!next.isLoading && next.physicalRegisters.isEmpty && _selectedCaixaId == null) {
+        setState(() {
+          _selectedCaixaId = 1;
+        });
+      }
     });
 
     final authState = ref.watch(authNotifierProvider);
     final cashState = ref.watch(cashNotifierProvider);
+    final caixas = cashState.physicalRegisters;
 
     return Scaffold(
       body: Container(
@@ -88,19 +108,63 @@ class _OpenCashScreenState extends ConsumerState<OpenCashScreen> {
                     const SizedBox(height: 6),
                     Text('Operador: ${authState.user?.nome ?? "-"}', style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 14)),
                     const SizedBox(height: 32),
-                    Row(
-                      children: [
-                        _CaixaOption(label: 'Caixa 01', subtitle: 'Entrada', isSelected: _selectedCaixaId == 1, onTap: () => setState(() => _selectedCaixaId = 1)),
-                        const SizedBox(width: 12),
-                        _CaixaOption(label: 'Caixa 02', subtitle: 'Fundo', isSelected: _selectedCaixaId == 2, onTap: () => setState(() => _selectedCaixaId = 2)),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+                    
+                    // Seletor de Caixas (Aparece apenas se houver mais de um)
+                    if (caixas.length > 1) ...[
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Selecione o Terminal:', style: TextStyle(color: AppTheme.onSurface, fontSize: 14, fontWeight: FontWeight.w500)),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceVariant.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.outline),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _selectedCaixaId,
+                            isExpanded: true,
+                            dropdownColor: const Color(0xFF1A1F30),
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.primaryColor),
+                            hint: const Text('Escolha um caixa', style: TextStyle(color: AppTheme.onSurfaceVariant)),
+                            items: caixas.map((c) => DropdownMenuItem(
+                              value: c.id,
+                              child: Text(c.nome, style: const TextStyle(color: AppTheme.onSurface)),
+                            )).toList(),
+                            onChanged: (val) => setState(() => _selectedCaixaId = val),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ] else if (caixas.length == 1) ...[
+                       // Se houver apenas um, mostra apenas o nome como texto informativo
+                       Container(
+                         padding: const EdgeInsets.all(16),
+                         width: double.infinity,
+                         decoration: BoxDecoration(
+                           color: AppTheme.primaryColor.withOpacity(0.05),
+                           borderRadius: BorderRadius.circular(12),
+                           border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+                         ),
+                         child: Row(
+                           children: [
+                             const Icon(Icons.computer_rounded, color: AppTheme.primaryColor, size: 20),
+                             const SizedBox(width: 12),
+                             Text('Terminal: ${caixas.first.nome}', style: const TextStyle(color: AppTheme.onSurface, fontWeight: FontWeight.w500)),
+                           ],
+                         ),
+                       ),
+                       const SizedBox(height: 24),
+                    ],
+
                     GlassInput(controller: _saldoController, label: 'Saldo Inicial (R\$)', hint: '0,00', prefixIcon: Icons.attach_money_rounded, keyboardType: TextInputType.number, textAlign: TextAlign.right, fontSize: 20),
                     const SizedBox(height: 16),
                     GlassInput(controller: _obsController, label: 'Observação (opcional)', hint: 'Notas sobre a abertura', prefixIcon: Icons.notes_rounded, maxLines: 2),
                     const SizedBox(height: 32),
-                    GlassButton.success(label: 'Abrir Caixa', icon: Icons.lock_open_rounded, onPressed: cashState.isLoading ? null : _abrirCaixa, isLoading: cashState.isLoading, expanded: true, height: 56),
+                    GlassButton.success(label: 'Abrir Caixa', icon: Icons.lock_open_rounded, onPressed: (cashState.isLoading || _selectedCaixaId == null) ? null : _abrirCaixa, isLoading: cashState.isLoading, expanded: true, height: 56),
                     const SizedBox(height: 12),
                     GlassButton.outline(label: 'Sair', icon: Icons.logout_rounded, onPressed: _logout, expanded: true, height: 46, color: AppTheme.onSurfaceVariant),
                   ],

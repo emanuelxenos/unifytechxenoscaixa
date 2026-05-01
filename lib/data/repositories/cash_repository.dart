@@ -34,4 +34,22 @@ class CashRepository {
     final response = await _api.post(ApiEndpoints.caixaSuprimento, body: request.toJson());
     if (!response.isSuccess) throw Exception(response.errorMessage);
   }
+
+  Future<List<PhysicalCashRegister>> listPhysicalRegisters() async {
+    try {
+      final response = await _api.get(ApiEndpoints.caixaFisicos);
+      if (!response.isSuccess) return [];
+      
+      final data = response.data;
+      if (data is List) {
+        return data.map<PhysicalCashRegister>((e) {
+          return PhysicalCashRegister.fromJson(Map<String, dynamic>.from(e));
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Erro ao carregar caixas físicos: $e');
+      return [];
+    }
+  }
 }

@@ -147,3 +147,21 @@ class CashMovementRequest {
 
   Map<String, dynamic> toJson() => {'valor': valor, 'motivo': motivo};
 }
+
+class PhysicalCashRegister {
+  final int id;
+  final String codigo;
+  final String nome;
+  final bool ativo;
+
+  PhysicalCashRegister({required this.id, required this.codigo, required this.nome, this.ativo = true});
+
+  factory PhysicalCashRegister.fromJson(Map<String, dynamic> json) {
+    return PhysicalCashRegister(
+      id: json['id_caixa_fisico'] ?? 0,
+      codigo: json['codigo'] ?? '',
+      nome: json['nome'] ?? '',
+      ativo: json['ativo'] ?? true,
+    );
+  }
+}
