@@ -19,6 +19,15 @@ class AudioService {
     }
   }
 
+  /// Toca o som de venda finalizada com sucesso
+  Future<void> playSuccessSale() async {
+    try {
+      await _player.play(AssetSource('sounds/success.mp3'));
+    } catch (_) {
+      // Fallback
+    }
+  }
+
   /// Toca o som de erro
   Future<void> playError() async {
     try {

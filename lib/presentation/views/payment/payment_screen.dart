@@ -8,6 +8,8 @@ import 'package:unifytechxenoscaixa/domain/models/sale.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/sale_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/app_snackbar.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_button.dart';
+import 'package:unifytechxenoscaixa/presentation/providers/payment_provider.dart';
+import 'package:unifytechxenoscaixa/core/services/payment/card_payment_provider.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key});
@@ -86,8 +88,42 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     if (_selectedFormaId == null) { AppSnackbar.warning(context, 'Selecione uma forma de pagamento'); return; }
     final valor = double.tryParse(_valorController.text.replaceAll('.', '').replaceAll(',', '.')) ?? 0;
     if (valor <= 0) { AppSnackbar.warning(context, 'Informe um valor válido'); return; }
+    
     final forma = _formas.firstWhere((f) => f.id == _selectedFormaId);
-    setState(() { _pagamentos.add(_PaymentEntry(formaPagamentoId: forma.id, nome: forma.nome, valor: valor)); _selectedFormaId = null; });
+    
+    // Se for cartão, tentamos o fluxo integrado
+    if (forma.tipo == 'cartao_debito' || forma.tipo == 'cartao_credito') {
+      _processCardPayment(forma, valor);
+    } else {
+      setState(() { 
+        _pagamentos.add(_PaymentEntry(formaPagamentoId: forma.id, nome: forma.nome, valor: valor)); 
+        _selectedFormaId = null; 
+      });
+    }
+  }
+
+  Future<void> _processCardPayment(PaymentMethod forma, double valor) async {
+    final paymentNotifier = ref.read(paymentNotifierProvider.notifier);
+    
+    // Inicia o pagamento na maquininha (Mock por enquanto)
+    final response = await paymentNotifier.pay(valor);
+
+    if (response.success) {
+      setState(() {
+        _pagamentos.add(_PaymentEntry(
+          formaPagamentoId: forma.id, 
+          nome: '${forma.nome} (${response.cardBrand})', 
+          valor: valor,
+          transactionId: response.transactionId,
+        ));
+        _selectedFormaId = null;
+      });
+      if (mounted) AppSnackbar.success(context, 'Cartão aprovado!');
+    } else {
+      if (mounted) AppSnackbar.error(context, response.message ?? 'Falha no cartão');
+    }
+    
+    paymentNotifier.reset();
   }
 
   void _removePayment(int index) => setState(() => _pagamentos.removeAt(index));
@@ -102,10 +138,13 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     }
     
     final saleNotifier = ref.read(saleNotifierProvider.notifier);
-    final pagamentos = _pagamentos.map((p) => CreatePaymentRequest(formaPagamentoId: p.formaPagamentoId, valor: p.valor)).toList();
+    final pagamentos = _pagamentos.map((p) => CreatePaymentRequest(
+      formaPagamentoId: p.formaPagamentoId, 
+      valor: p.valor,
+      autorizacao: p.transactionId, // Envia o ID da maquininha para o banco
+    )).toList();
     
     await saleNotifier.finalizeSale(pagamentos);
-    // A SaleScreen detectará o sucesso e fechará este modal.
   }
 
   @override
@@ -119,102 +158,127 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     final saleState = ref.watch(saleNotifierProvider);
+    final paymentState = ref.watch(paymentNotifierProvider);
 
     // AUTODESTRUIÇÃO: Cada instância deste modal se fecha ao detectar sucesso
     ref.listen(saleNotifierProvider, (prev, next) {
-      if (next.lastSaleResponse != null && prev?.lastSaleResponse == null) {
+      if (next.lastSaleResponse != null && next.lastSaleResponse != prev?.lastSaleResponse) {
         Navigator.of(context).pop();
         AppSnackbar.success(context, 'Venda #${next.lastSaleResponse?.numeroVenda} finalizada!');
       }
     });
 
-    return Dialog(
-      backgroundColor: Colors.transparent, insetPadding: const EdgeInsets.all(40),
-      child: Container(
-        width: 560, constraints: const BoxConstraints(maxHeight: 640), decoration: AppTheme.glassCard(),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-              child: Row(children: [
-                const Icon(Icons.payment_rounded, color: Colors.white, size: 28), const SizedBox(width: 14),
-                const Expanded(child: Text('Pagamento', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700))),
-                Text(Formatters.currency(_valorTotal), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
-              ]),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Forma de Pagamento', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  Wrap(spacing: 10, runSpacing: 10, children: _formas.map((f) => _PaymentMethodChip(forma: f, isSelected: _selectedFormaId == f.id, onTap: () => _selectForma(f.id))).toList()),
-                  const SizedBox(height: 20),
-                  if (_selectedFormaId != null) ...[
-                    Row(children: [
-                      Expanded(child: TextField(
-                        controller: _valorController, 
-                        focusNode: _valorFocus,
-                        autofocus: true,
-                        keyboardType: TextInputType.number, 
-                        textAlign: TextAlign.right, 
-                        style: const TextStyle(color: AppTheme.onBackground, fontSize: 24, fontWeight: FontWeight.w700), 
-                        decoration: InputDecoration(
-                          labelText: 'Valor (R\$)', 
-                          prefixIcon: const Icon(Icons.attach_money), 
-                          suffixIcon: IconButton(icon: const Icon(Icons.add_circle, color: AppTheme.accentGreen), onPressed: _addPayment)
-                        ), 
-                        onSubmitted: (_) => _addPayment()
-                      )),
-                    ]),
-                    const SizedBox(height: 16),
-                  ],
-                  if (_pagamentos.isNotEmpty) ...[
-                    const Text('Pagamentos Adicionados', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    ...List.generate(_pagamentos.length, (i) {
-                      final p = _pagamentos[i];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 6), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(color: AppTheme.surfaceVariant, borderRadius: BorderRadius.circular(10)),
-                        child: Row(children: [
-                          const Icon(Icons.check_circle, color: AppTheme.accentGreen, size: 18), const SizedBox(width: 10),
-                          Expanded(child: Text(p.nome, style: const TextStyle(color: AppTheme.onSurface, fontSize: 14))),
-                          Text(Formatters.currency(p.valor), style: const TextStyle(color: AppTheme.accentGreen, fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 8),
-                          GestureDetector(onTap: () => _removePayment(i), child: const Icon(Icons.close, color: AppTheme.accentRed, size: 18)),
+    return Stack(
+      children: [
+        Dialog(
+          backgroundColor: Colors.transparent, insetPadding: const EdgeInsets.all(40),
+          child: Container(
+            width: 560, constraints: const BoxConstraints(maxHeight: 640), decoration: AppTheme.glassCard(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+                  child: Row(children: [
+                    const Icon(Icons.payment_rounded, color: Colors.white, size: 28), const SizedBox(width: 14),
+                    const Expanded(child: Text('Pagamento', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700))),
+                    Text(Formatters.currency(_valorTotal), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+                  ]),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('Forma de Pagamento', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 12),
+                      Wrap(spacing: 10, runSpacing: 10, children: _formas.map((f) => _PaymentMethodChip(forma: f, isSelected: _selectedFormaId == f.id, onTap: () => _selectForma(f.id))).toList()),
+                      const SizedBox(height: 20),
+                      if (_selectedFormaId != null) ...[
+                        Row(children: [
+                          Expanded(child: TextField(
+                            controller: _valorController, 
+                            focusNode: _valorFocus,
+                            autofocus: true,
+                            keyboardType: TextInputType.number, 
+                            textAlign: TextAlign.right, 
+                            style: const TextStyle(color: AppTheme.onBackground, fontSize: 24, fontWeight: FontWeight.w700), 
+                            decoration: InputDecoration(
+                              labelText: 'Valor (R\$)', 
+                              prefixIcon: const Icon(Icons.attach_money), 
+                              suffixIcon: IconButton(icon: const Icon(Icons.add_circle, color: AppTheme.accentGreen), onPressed: _addPayment)
+                            ), 
+                            onSubmitted: (_) => _addPayment()
+                          )),
                         ]),
-                      );
-                    }),
-                    const SizedBox(height: 12),
-                  ],
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: AppTheme.surfaceVariant.withOpacity(0.5), borderRadius: BorderRadius.circular(12)),
-                    child: Column(children: [
-                      _PayRow('Total da Venda', Formatters.currency(_valorTotal)),
-                      const SizedBox(height: 6),
-                      _PayRow('Total Pago', Formatters.currency(_totalPago), color: AppTheme.accentGreen),
-                      if (_restante > 0.01) ...[const SizedBox(height: 6), _PayRow('Restante', Formatters.currency(_restante), color: AppTheme.accentOrange)],
-                      if (_troco > 0) ...[const SizedBox(height: 6), _PayRow('Troco', Formatters.currency(_troco), color: AppTheme.accentBlue, bold: true)],
+                        const SizedBox(height: 16),
+                      ],
+                      if (_pagamentos.isNotEmpty) ...[
+                        const Text('Pagamentos Adicionados', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        ...List.generate(_pagamentos.length, (i) {
+                          final p = _pagamentos[i];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 6), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(color: AppTheme.surfaceVariant, borderRadius: BorderRadius.circular(10)),
+                            child: Row(children: [
+                              const Icon(Icons.check_circle, color: AppTheme.accentGreen, size: 18), const SizedBox(width: 10),
+                              Expanded(child: Text(p.nome, style: const TextStyle(color: AppTheme.onSurface, fontSize: 14))),
+                              Text(Formatters.currency(p.valor), style: const TextStyle(color: AppTheme.accentGreen, fontWeight: FontWeight.w600)),
+                              const SizedBox(width: 8),
+                              GestureDetector(onTap: () => _removePayment(i), child: const Icon(Icons.close, color: AppTheme.accentRed, size: 18)),
+                            ]),
+                          );
+                        }),
+                        const SizedBox(height: 12),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(color: AppTheme.surfaceVariant.withOpacity(0.5), borderRadius: BorderRadius.circular(12)),
+                        child: Column(children: [
+                          _PayRow('Total da Venda', Formatters.currency(_valorTotal)),
+                          const SizedBox(height: 6),
+                          _PayRow('Total Pago', Formatters.currency(_totalPago), color: AppTheme.accentGreen),
+                          if (_restante > 0.01) ...[const SizedBox(height: 6), _PayRow('Restante', Formatters.currency(_restante), color: AppTheme.accentOrange)],
+                          if (_troco > 0) ...[const SizedBox(height: 6), _PayRow('Troco', Formatters.currency(_troco), color: AppTheme.accentBlue, bold: true)],
+                        ]),
+                      ),
                     ]),
                   ),
-                ]),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(children: [
+                    Expanded(child: GlassButton.outline(label: 'Voltar (ESC)', icon: Icons.arrow_back_rounded, onPressed: () => Navigator.of(context).pop(), height: 50)),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 2, child: GlassButton.success(label: 'Confirmar (F2)', icon: Icons.check_rounded, onPressed: (_pagamentos.isEmpty || saleState.isLoading) ? null : _confirm, isLoading: saleState.isLoading, height: 50)),
+                  ]),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // Camada de processamento do cartão
+        if (paymentState.status == PaymentStatus.processing)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.8),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(color: AppTheme.primaryColor),
+                    const SizedBox(height: 24),
+                    Text(paymentState.message ?? 'Aguardando maquininha...', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    const Text('Siga as instruções na máquina', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  ],
+                ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(children: [
-                Expanded(child: GlassButton.outline(label: 'Voltar (ESC)', icon: Icons.arrow_back_rounded, onPressed: () => Navigator.of(context).pop(), height: 50)),
-                const SizedBox(width: 12),
-                Expanded(flex: 2, child: GlassButton.success(label: 'Confirmar (F2)', icon: Icons.check_rounded, onPressed: (_pagamentos.isEmpty || saleState.isLoading) ? null : _confirm, isLoading: saleState.isLoading, height: 50)),
-              ]),
-            ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 }
@@ -264,4 +328,10 @@ class _PaymentMethodChipState extends State<_PaymentMethodChip> {
   }
 }
 
-class _PaymentEntry { final int formaPagamentoId; final String nome; final double valor; _PaymentEntry({required this.formaPagamentoId, required this.nome, required this.valor}); }
+class _PaymentEntry { 
+  final int formaPagamentoId; 
+  final String nome; 
+  final double valor; 
+  final String? transactionId;
+  _PaymentEntry({required this.formaPagamentoId, required this.nome, required this.valor, this.transactionId}); 
+}

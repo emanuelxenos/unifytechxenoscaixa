@@ -318,6 +318,12 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
       if (next.error != null && next.error != prev?.error) {
         AppSnackbar.error(context, next.error!);
       }
+
+      if (next.lastSaleResponse != null && next.lastSaleResponse != prev?.lastSaleResponse) {
+        // Venda finalizada com sucesso!
+        AudioService().playSuccessSale();
+        _searchFocus.requestFocus();
+      }
     });
 
     return Scaffold(
