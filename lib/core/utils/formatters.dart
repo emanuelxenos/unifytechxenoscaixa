@@ -5,7 +5,7 @@ class Formatters {
 
   static final _currencyFormat = NumberFormat.currency(
     locale: 'pt_BR',
-    symbol: 'R\$',
+    symbol: r'R$',
     decimalDigits: 2,
   );
 
@@ -17,55 +17,90 @@ class Formatters {
   static final _dateTimeFormat = DateFormat('dd/MM/yyyy HH:mm');
   static final _dateTimeFullFormat = DateFormat('dd/MM/yyyy HH:mm:ss');
 
+  static double _toDouble(dynamic value) {
+    try {
+      if (value == null) return 0.0;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    } catch (_) {
+      return 0.0;
+    }
+  }
+
   /// Formata valor monetário: R$ 1.234,56
   static String currency(dynamic value) {
-    if (value == null) return 'R\$ 0,00';
-    final doubleValue = value is int ? value.toDouble() : (value as double);
-    return _currencyFormat.format(doubleValue);
+    try {
+      return _currencyFormat.format(_toDouble(value));
+    } catch (_) {
+      return r'R$ 0,00';
+    }
   }
 
   /// Formata quantidade: 1.234,5
   static String quantity(dynamic value) {
-    if (value == null) return '0';
-    final doubleValue = value is int ? value.toDouble() : (value as double);
-    return _quantityFormat.format(doubleValue);
+    try {
+      return _quantityFormat.format(_toDouble(value));
+    } catch (_) {
+      return '0';
+    }
   }
 
   /// Formata percentual: 12,50%
   static String percent(dynamic value) {
-    if (value == null) return '0,00%';
-    final doubleValue = value is int ? value.toDouble() : (value as double);
-    return '${_percentFormat.format(doubleValue)}%';
+    try {
+      return '${_percentFormat.format(_toDouble(value))}%';
+    } catch (_) {
+      return '0,00%';
+    }
   }
 
   /// Formata data: 30/04/2026
   static String date(DateTime? date) {
-    if (date == null) return '-';
-    return _dateFormat.format(date);
+    try {
+      if (date == null) return '-';
+      return _dateFormat.format(date);
+    } catch (_) {
+      return '-';
+    }
   }
 
   /// Formata hora: 14:30:00
   static String time(DateTime? date) {
-    if (date == null) return '-';
-    return _timeFormat.format(date);
+    try {
+      if (date == null) return '-';
+      return _timeFormat.format(date);
+    } catch (_) {
+      return '-';
+    }
   }
 
   /// Formata data e hora: 30/04/2026 14:30
   static String dateTime(DateTime? date) {
-    if (date == null) return '-';
-    return _dateTimeFormat.format(date);
+    try {
+      if (date == null) return '-';
+      return _dateTimeFormat.format(date);
+    } catch (_) {
+      return '-';
+    }
   }
 
   /// Formata data e hora completa: 30/04/2026 14:30:00
   static String dateTimeFull(DateTime? date) {
-    if (date == null) return '-';
-    return _dateTimeFullFormat.format(date);
+    try {
+      if (date == null) return '-';
+      return _dateTimeFullFormat.format(date);
+    } catch (_) {
+      return '-';
+    }
   }
 
   /// Formata apenas o valor numérico: 1234.56 → "1.234,56"
   static String number(dynamic value) {
-    if (value == null) return '0,00';
-    final doubleValue = value is int ? value.toDouble() : (value as double);
-    return _percentFormat.format(doubleValue);
+    try {
+      return _percentFormat.format(_toDouble(value));
+    } catch (_) {
+      return '0,00';
+    }
   }
 }

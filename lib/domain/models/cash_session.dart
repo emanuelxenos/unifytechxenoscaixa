@@ -50,6 +50,13 @@ class CashSession {
   bool get isAberto => status == 'aberto';
 
   factory CashSession.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
     return CashSession(
       id: json['id_sessao'] ?? 0,
       caixaFisicoId: json['caixa_fisico_id'] ?? 0,
@@ -57,21 +64,21 @@ class CashSession {
       codigoSessao: json['codigo_sessao'] ?? '',
       dataAbertura: DateTime.tryParse(json['data_abertura'] ?? '') ?? DateTime.now(),
       dataFechamento: json['data_fechamento'] != null ? DateTime.tryParse(json['data_fechamento']) : null,
-      saldoInicial: (json['saldo_inicial'] ?? 0).toDouble(),
-      totalVendas: (json['total_vendas'] ?? 0).toDouble(),
-      totalVendasCanceladas: (json['total_vendas_canceladas'] ?? 0).toDouble(),
-      totalDescontosConcedidos: (json['total_descontos_concedidos'] ?? 0).toDouble(),
-      totalSangrias: (json['total_sangrias'] ?? 0).toDouble(),
-      totalSuprimentos: (json['total_suprimentos'] ?? 0).toDouble(),
-      totalDinheiro: (json['total_dinheiro'] ?? 0).toDouble(),
-      totalCartaoDebito: (json['total_cartao_debito'] ?? 0).toDouble(),
-      totalCartaoCredito: (json['total_cartao_credito'] ?? 0).toDouble(),
-      totalPix: (json['total_pix'] ?? 0).toDouble(),
-      totalVale: (json['total_vale'] ?? 0).toDouble(),
-      totalOutros: (json['total_outros'] ?? 0).toDouble(),
-      saldoFinal: (json['saldo_final'] ?? 0).toDouble(),
-      saldoFinalEsperado: (json['saldo_final_esperado'] ?? 0).toDouble(),
-      diferenca: (json['diferenca'] ?? 0).toDouble(),
+      saldoInicial: parseDouble(json['saldo_inicial']),
+      totalVendas: parseDouble(json['total_vendas']),
+      totalVendasCanceladas: parseDouble(json['total_vendas_canceladas']),
+      totalDescontosConcedidos: parseDouble(json['total_descontos_concedidos']),
+      totalSangrias: parseDouble(json['total_sangrias']),
+      totalSuprimentos: parseDouble(json['total_suprimentos']),
+      totalDinheiro: parseDouble(json['total_dinheiro']),
+      totalCartaoDebito: parseDouble(json['total_cartao_debito']),
+      totalCartaoCredito: parseDouble(json['total_cartao_credito']),
+      totalPix: parseDouble(json['total_pix']),
+      totalVale: parseDouble(json['total_vale']),
+      totalOutros: parseDouble(json['total_outros']),
+      saldoFinal: parseDouble(json['saldo_final']),
+      saldoFinalEsperado: parseDouble(json['saldo_final_esperado']),
+      diferenca: parseDouble(json['diferenca']),
       status: json['status'] ?? 'aberto',
     );
   }
@@ -87,8 +94,12 @@ class CashStatusResponse {
   factory CashStatusResponse.fromJson(Map<String, dynamic> json) {
     return CashStatusResponse(
       sessaoAtiva: json['sessao_ativa'] ?? false,
-      sessao: json['sessao'] != null ? CashSession.fromJson(json['sessao']) : null,
-      operador: json['operador'] != null ? OperadorInfo.fromJson(json['operador']) : null,
+      sessao: (json['sessao'] != null && json['sessao'] is Map<String, dynamic>) 
+          ? CashSession.fromJson(json['sessao']) 
+          : null,
+      operador: (json['operador'] != null && json['operador'] is Map<String, dynamic>) 
+          ? OperadorInfo.fromJson(json['operador']) 
+          : null,
     );
   }
 }

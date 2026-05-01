@@ -24,10 +24,23 @@ class _CloseCashScreenState extends ConsumerState<CloseCashScreen> {
   @override
   void initState() {
     super.initState();
-    ref.read(cashNotifierProvider.notifier).checkStatus();
+    // Usar microtask para evitar erro de atualizar estado durante o build
+    Future.microtask(() {
+      if (mounted) {
+        ref.read(cashNotifierProvider.notifier).checkStatus();
+      }
+    });
   }
 
-  double get _saldoContado => double.tryParse(_saldoController.text.replaceAll('.', '').replaceAll(',', '.')) ?? 0;
+  double get _saldoContado {
+    try {
+      final text = _saldoController.text.replaceAll('.', '').replaceAll(',', '.');
+      if (text.isEmpty) return 0.0;
+      return double.tryParse(text) ?? 0.0;
+    } catch (_) {
+      return 0.0;
+    }
+  }
 
   Future<void> _fecharCaixa() async {
     final senha = _senhaController.text.trim();
@@ -57,55 +70,61 @@ class _CloseCashScreenState extends ConsumerState<CloseCashScreen> {
 
     return Scaffold(
       body: Container(
+        width: double.infinity, height: double.infinity,
         decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF0B0E1A), Color(0xFF141829)], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
         child: Center(
-          child: SingleChildScrollView(
-            child: SizedBox(
-              width: 520,
-              child: GlassCard(
-                padding: const EdgeInsets.all(36),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppTheme.accentOrange.withOpacity(0.12), shape: BoxShape.circle), child: const Icon(Icons.lock_rounded, color: AppTheme.accentOrange, size: 36)),
-                    const SizedBox(height: 16),
-                    const Text('Fechamento de Caixa', style: TextStyle(color: AppTheme.onBackground, fontSize: 24, fontWeight: FontWeight.w700)),
-                    
-                    if (cashState.isLoading && sessao == null) ...[
-                      const SizedBox(height: 40),
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 20),
-                      const Text('Carregando dados do caixa...', style: TextStyle(color: Colors.white70)),
-                    ] else if (cashState.error != null && sessao == null) ...[
-                      const SizedBox(height: 20),
-                      Text(cashState.error!, style: const TextStyle(color: AppTheme.accentRed)),
-                      const SizedBox(height: 20),
-                      GlassButton.outline(label: 'Tentar Novamente', onPressed: () => ref.read(cashNotifierProvider.notifier).checkStatus()),
-                    ] else ...[
-                      if (sessao != null) ...[
-                        const SizedBox(height: 4), 
-                        Text('Sessão: ${sessao.codigoSessao}', style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13)),
-                        const SizedBox(height: 28),
-                        _buildSummaryGrid(sessao),
-                        const SizedBox(height: 24),
-                      ],
-                      GlassInput(controller: _saldoController, label: 'Saldo Contado (R\$)', hint: '0,00', prefixIcon: Icons.calculate_rounded, keyboardType: TextInputType.number, textAlign: TextAlign.right, fontSize: 20, onChanged: (_) => setState(() {})),
-                      if (sessao != null && _saldoContado > 0) ...[const SizedBox(height: 12), _buildDifference(sessao)],
-                      const SizedBox(height: 16),
-                      GlassInput(controller: _senhaController, label: 'Senha do Supervisor', hint: 'Digite a senha', prefixIcon: Icons.admin_panel_settings_rounded, obscureText: true),
-                      const SizedBox(height: 16),
-                      GlassInput(controller: _obsController, label: 'Observação (opcional)', hint: 'Notas sobre o fechamento', prefixIcon: Icons.notes_rounded),
+          child: Container(
+            width: 520,
+            margin: const EdgeInsets.symmetric(vertical: 20),
+            child: GlassCard(
+              padding: const EdgeInsets.all(36),
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  Center(child: Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppTheme.accentOrange.withOpacity(0.12), shape: BoxShape.circle), child: const Icon(Icons.lock_rounded, color: AppTheme.accentOrange, size: 36))),
+                  const SizedBox(height: 16),
+                  const Center(child: Text('Fechamento de Caixa', style: TextStyle(color: AppTheme.onBackground, fontSize: 24, fontWeight: FontWeight.w700))),
+                  
+                  if (cashState.isLoading && sessao == null) ...[
+                    const SizedBox(height: 40),
+                    const Center(child: CircularProgressIndicator()),
+                    const SizedBox(height: 20),
+                    const Center(child: Text('Carregando dados do caixa...', style: TextStyle(color: Colors.white70))),
+                  ] else if (cashState.error != null && sessao == null) ...[
+                    const SizedBox(height: 20),
+                    Center(child: Text(cashState.error!, style: const TextStyle(color: AppTheme.accentRed))),
+                    const SizedBox(height: 20),
+                    GlassButton.outline(label: 'Tentar Novamente', onPressed: () => ref.read(cashNotifierProvider.notifier).checkStatus()),
+                  ] else ...[
+                    if (sessao != null) ...[
+                      const SizedBox(height: 4), 
+                      Center(child: Text('Sessão: ${sessao.codigoSessao}', style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13))),
                       const SizedBox(height: 28),
+                      _buildSummaryGrid(sessao),
+                      const SizedBox(height: 24),
+                    ],
+                    GlassInput(controller: _saldoController, label: 'Saldo Contado (R\$)', hint: '0,00', prefixIcon: Icons.calculate_rounded, keyboardType: TextInputType.number, textAlign: TextAlign.right, fontSize: 20, onChanged: (_) => setState(() {})),
+                    
+                    // Só mostra a diferença se a sessão existir e o saldo for > 0
+                    if (sessao != null && _saldoContado > 0) ...[
+                      const SizedBox(height: 12), 
+                      _buildDifference(sessao)
                     ],
                     
                     const SizedBox(height: 16),
-                    Row(children: [
-                      Expanded(child: GlassButton.outline(label: 'Voltar', icon: Icons.arrow_back_rounded, onPressed: () => Navigator.of(context).pushReplacementNamed('/sale'), height: 50)),
-                      const SizedBox(width: 12),
-                      Expanded(flex: 2, child: GlassButton(label: 'Fechar Caixa', icon: Icons.lock_rounded, gradient: AppTheme.warningGradient, onPressed: (cashState.isLoading || sessao == null) ? null : _fecharCaixa, isLoading: cashState.isLoading, height: 50, expanded: true)),
-                    ]),
+                    GlassInput(controller: _senhaController, label: 'Senha do Supervisor', hint: 'Digite a senha', prefixIcon: Icons.admin_panel_settings_rounded, obscureText: true),
+                    const SizedBox(height: 16),
+                    GlassInput(controller: _obsController, label: 'Observação (opcional)', hint: 'Notas sobre o fechamento', prefixIcon: Icons.notes_rounded),
+                    const SizedBox(height: 28),
                   ],
-                ),
+                  
+                  const SizedBox(height: 16),
+                  Column(children: [
+                    GlassButton(label: 'Fechar Caixa', icon: Icons.lock_rounded, gradient: AppTheme.warningGradient, onPressed: (cashState.isLoading || sessao == null) ? null : _fecharCaixa, isLoading: cashState.isLoading, height: 50, expanded: true),
+                    const SizedBox(height: 12),
+                    GlassButton.outline(label: 'Voltar para Vendas', icon: Icons.arrow_back_rounded, onPressed: () => Navigator.of(context).pushReplacementNamed('/sale'), height: 50, expanded: true),
+                  ]),
+                ],
               ),
             ),
           ),
@@ -128,20 +147,24 @@ class _CloseCashScreenState extends ConsumerState<CloseCashScreen> {
   }
 
   Widget _buildDifference(CashSession sessao) {
-    final esperado = sessao.saldoInicial + sessao.totalDinheiro - sessao.totalSangrias + sessao.totalSuprimentos;
-    final diff = _saldoContado - esperado;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: (diff.abs() < 0.01 ? AppTheme.accentGreen : AppTheme.accentRed).withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: (diff.abs() < 0.01 ? AppTheme.accentGreen : AppTheme.accentRed).withOpacity(0.3)),
-      ),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        const Text('Diferença:', style: TextStyle(color: AppTheme.onSurface, fontSize: 14, fontWeight: FontWeight.w500)),
-        Text(diff >= 0 ? '+${Formatters.currency(diff)}' : Formatters.currency(diff), style: TextStyle(color: diff.abs() < 0.01 ? AppTheme.accentGreen : AppTheme.accentRed, fontSize: 18, fontWeight: FontWeight.w700)),
-      ]),
-    );
+    try {
+      final esperado = sessao.saldoInicial + sessao.totalDinheiro - sessao.totalSangrias + sessao.totalSuprimentos;
+      final diff = _saldoContado - esperado;
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: (diff.abs() < 0.01 ? AppTheme.accentGreen : AppTheme.accentRed).withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: (diff.abs() < 0.01 ? AppTheme.accentGreen : AppTheme.accentRed).withOpacity(0.3)),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text('Diferença:', style: TextStyle(color: AppTheme.onSurface, fontSize: 14, fontWeight: FontWeight.w500)),
+          Text(diff >= 0 ? '+${Formatters.currency(diff)}' : Formatters.currency(diff), style: TextStyle(color: diff.abs() < 0.01 ? AppTheme.accentGreen : AppTheme.accentRed, fontSize: 18, fontWeight: FontWeight.w700)),
+        ]),
+      );
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
   }
 }
 
