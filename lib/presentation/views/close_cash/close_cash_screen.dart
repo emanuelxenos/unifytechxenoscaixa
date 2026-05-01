@@ -54,6 +54,11 @@ class _CloseCashScreenState extends ConsumerState<CloseCashScreen> {
     final cashState = ref.watch(cashNotifierProvider);
     final sessao = cashState.sessao;
 
+    // Se a sessão sumiu (foi fechada), mostra um loader enquanto navega para o login
+    if (sessao == null && !cashState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF0B0E1A), Color(0xFF141829)], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
@@ -94,7 +99,7 @@ class _CloseCashScreenState extends ConsumerState<CloseCashScreen> {
     );
   }
 
-  Widget _buildSummaryGrid(dynamic sessao) {
+  Widget _buildSummaryGrid(CashSession sessao) {
     return Wrap(spacing: 10, runSpacing: 10, children: [
       _SummaryTile('Saldo Inicial', Formatters.currency(sessao.saldoInicial), Icons.account_balance_wallet, AppTheme.accentBlue),
       _SummaryTile('Total Vendas', Formatters.currency(sessao.totalVendas), Icons.shopping_cart, AppTheme.accentGreen),
@@ -107,7 +112,7 @@ class _CloseCashScreenState extends ConsumerState<CloseCashScreen> {
     ]);
   }
 
-  Widget _buildDifference(dynamic sessao) {
+  Widget _buildDifference(CashSession sessao) {
     final esperado = sessao.saldoInicial + sessao.totalDinheiro - sessao.totalSangrias + sessao.totalSuprimentos;
     final diff = _saldoContado - esperado;
     return Container(
