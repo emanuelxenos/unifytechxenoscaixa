@@ -49,7 +49,7 @@ class _StatusBarState extends State<StatusBar> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        border: Border(bottom: BorderSide(color: AppTheme.outline.withValues(alpha: 0.5))),
+        border: Border(bottom: BorderSide(color: AppTheme.outline.withOpacity(0.5))),
       ),
       child: Row(
         children: [
@@ -90,6 +90,33 @@ class _StatusBarState extends State<StatusBar> {
 
           // Custom actions
           if (widget.actions != null) ...widget.actions!,
+
+          // F1 help hint
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceVariant.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppTheme.outline.withOpacity(0.5)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppTheme.outline, width: 1),
+                  ),
+                  child: const Text('F1', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 10, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 6),
+                Text('Ajuda', style: TextStyle(color: AppTheme.onSurfaceVariant.withOpacity(0.7), fontSize: 11)),
+              ],
+            ),
+          ),
 
           // Date & Time
           Container(

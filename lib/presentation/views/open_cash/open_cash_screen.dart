@@ -22,36 +22,16 @@ class _OpenCashScreenState extends ConsumerState<OpenCashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkExistingSession();
+    Future.microtask(() => ref.read(cashNotifierProvider.notifier).checkStatus());
   }
 
-  Future<void> _checkExistingSession() async {
-    final cashNotifier = ref.read(cashNotifierProvider.notifier);
-    await cashNotifier.checkStatus();
-    if (!mounted) return;
-    final cashState = ref.read(cashNotifierProvider);
-    if (cashState.sessaoAtiva) {
-      Navigator.of(context).pushReplacementNamed('/sale');
-    }
-  }
-
-  Future<void> _abrirCaixa() async {
+  void _abrirCaixa() async {
     final saldoText = _saldoController.text.replaceAll('.', '').replaceAll(',', '.');
     final saldo = double.tryParse(saldoText) ?? 0;
 
-    final cashNotifier = ref.read(cashNotifierProvider.notifier);
-    final success = await cashNotifier.abrirCaixa(
+    await ref.read(cashNotifierProvider.notifier).abrirCaixa(
       _selectedCaixaId, saldo, observacao: _obsController.text.trim(),
     );
-
-    if (!mounted) return;
-    if (success) {
-      AppSnackbar.success(context, 'Caixa aberto com sucesso!');
-      Navigator.of(context).pushReplacementNamed('/sale');
-    } else {
-      final cashState = ref.read(cashNotifierProvider);
-      AppSnackbar.error(context, cashState.error ?? 'Erro ao abrir caixa');
-    }
   }
 
   void _logout() async {
@@ -69,6 +49,15 @@ class _OpenCashScreenState extends ConsumerState<OpenCashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(cashNotifierProvider, (previous, next) {
+      if (next.sessaoAtiva && !(previous?.sessaoAtiva ?? false)) {
+        Navigator.of(context).pushReplacementNamed('/sale');
+      }
+      if (next.error != null && next.error != previous?.error) {
+        AppSnackbar.error(context, next.error!);
+      }
+    });
+
     final authState = ref.watch(authNotifierProvider);
     final cashState = ref.watch(cashNotifierProvider);
 
@@ -91,7 +80,7 @@ class _OpenCashScreenState extends ConsumerState<OpenCashScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: AppTheme.accentGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: AppTheme.accentGreen.withOpacity(0.1), shape: BoxShape.circle),
                       child: const Icon(Icons.point_of_sale_rounded, color: AppTheme.accentGreen, size: 40),
                     ),
                     const SizedBox(height: 20),
@@ -125,46 +114,49 @@ class _OpenCashScreenState extends ConsumerState<OpenCashScreen> {
   }
 }
 
-class _CaixaOption extends StatefulWidget {
+class _CaixaOption extends StatelessWidget {
   final String label;
   final String subtitle;
   final bool isSelected;
   final VoidCallback onTap;
-  const _CaixaOption({required this.label, required this.subtitle, required this.isSelected, required this.onTap});
-  @override
-  State<_CaixaOption> createState() => _CaixaOptionState();
-}
+  
+  _CaixaOption({required this.label, required this.subtitle, required this.isSelected, required this.onTap});
 
-class _CaixaOptionState extends State<_CaixaOption> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hovered = ValueNotifier(false);
+
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: widget.isSelected ? AppTheme.primaryColor.withValues(alpha: 0.12) : _hovered ? AppTheme.surfaceVariant : AppTheme.surfaceVariant.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: widget.isSelected ? AppTheme.primaryColor : AppTheme.outline, width: widget.isSelected ? 2 : 1),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _hovered,
+        builder: (context, isHovered, _) {
+          return MouseRegion(
+            cursor: SystemMouseCursors.click,
+            onEnter: (_) => _hovered.value = true,
+            onExit: (_) => _hovered.value = false,
+            child: GestureDetector(
+              onTap: onTap,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primaryColor.withOpacity(0.12) : isHovered ? AppTheme.surfaceVariant : AppTheme.surfaceVariant.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: isSelected ? AppTheme.primaryColor : AppTheme.outline, width: isSelected ? 2 : 1),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.point_of_sale_rounded, color: isSelected ? AppTheme.primaryColor : AppTheme.onSurfaceVariant, size: 28),
+                    const SizedBox(height: 8),
+                    Text(label, style: TextStyle(color: isSelected ? AppTheme.primaryColor : AppTheme.onSurface, fontWeight: FontWeight.w600, fontSize: 14)),
+                    const SizedBox(height: 2),
+                    Text(subtitle, style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 12)),
+                  ],
+                ),
+              ),
             ),
-            child: Column(
-              children: [
-                Icon(Icons.point_of_sale_rounded, color: widget.isSelected ? AppTheme.primaryColor : AppTheme.onSurfaceVariant, size: 28),
-                const SizedBox(height: 8),
-                Text(widget.label, style: TextStyle(color: widget.isSelected ? AppTheme.primaryColor : AppTheme.onSurface, fontWeight: FontWeight.w600, fontSize: 14)),
-                const SizedBox(height: 2),
-                Text(widget.subtitle, style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 12)),
-              ],
-            ),
-          ),
-        ),
+          );
+        }
       ),
     );
   }

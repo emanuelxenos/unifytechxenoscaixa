@@ -79,7 +79,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   GlassInput(controller: _portController, label: 'Porta', hint: '8080', prefixIcon: Icons.tag_rounded, keyboardType: TextInputType.number),
                   const SizedBox(height: 16),
                   if (_testResult != null)
-                    Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: (_testResult! ? AppTheme.accentGreen : AppTheme.accentRed).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: (_testResult! ? AppTheme.accentGreen : AppTheme.accentRed).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
                       child: Row(children: [Icon(_testResult! ? Icons.check_circle : Icons.error, color: _testResult! ? AppTheme.accentGreen : AppTheme.accentRed, size: 18), const SizedBox(width: 8), Text(_testResult! ? 'Conectado' : 'Falha', style: TextStyle(color: _testResult! ? AppTheme.accentGreen : AppTheme.accentRed, fontSize: 13))])),
                   const SizedBox(height: 12),
                   GlassButton.outline(label: _testing ? 'Testando...' : 'Testar Conexão', icon: Icons.wifi_find_rounded, onPressed: _testing ? null : _testConnection, expanded: true, height: 44, color: AppTheme.accentBlue),

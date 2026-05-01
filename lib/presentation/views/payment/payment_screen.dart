@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:unifytechxenoscaixa/core/theme/app_theme.dart';
 import 'package:unifytechxenoscaixa/core/utils/formatters.dart';
@@ -80,7 +81,21 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   Widget build(BuildContext context) {
     final saleState = ref.watch(saleNotifierProvider);
 
-    return Dialog(
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        if (event.logicalKey == LogicalKeyboardKey.escape) {
+          Navigator.of(context).pop();
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey == LogicalKeyboardKey.f2) {
+          if (_pagamentos.isNotEmpty && !saleState.isLoading) _confirm();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Dialog(
       backgroundColor: Colors.transparent, insetPadding: const EdgeInsets.all(40),
       child: Container(
         width: 560, constraints: const BoxConstraints(maxHeight: 640), decoration: AppTheme.glassCard(),
@@ -131,7 +146,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   ],
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: AppTheme.surfaceVariant.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(color: AppTheme.surfaceVariant.withOpacity(0.5), borderRadius: BorderRadius.circular(12)),
                     child: Column(children: [
                       _PayRow('Total da Venda', Formatters.currency(_valorTotal)),
                       const SizedBox(height: 6),
@@ -146,14 +161,15 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(children: [
-                Expanded(child: GlassButton.outline(label: 'Voltar', icon: Icons.arrow_back_rounded, onPressed: () => Navigator.of(context).pop(), height: 50)),
+                Expanded(child: GlassButton.outline(label: 'Voltar (ESC)', icon: Icons.arrow_back_rounded, onPressed: () => Navigator.of(context).pop(), height: 50)),
                 const SizedBox(width: 12),
-                Expanded(flex: 2, child: GlassButton.success(label: 'Confirmar Pagamento', icon: Icons.check_rounded, onPressed: (_pagamentos.isEmpty || saleState.isLoading) ? null : _confirm, isLoading: saleState.isLoading, height: 50)),
+                Expanded(flex: 2, child: GlassButton.success(label: 'Confirmar (F2)', icon: Icons.check_rounded, onPressed: (_pagamentos.isEmpty || saleState.isLoading) ? null : _confirm, isLoading: saleState.isLoading, height: 50)),
               ]),
             ),
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -188,7 +204,7 @@ class _PaymentMethodChipState extends State<_PaymentMethodChip> {
       child: GestureDetector(onTap: widget.onTap,
         child: AnimatedContainer(duration: const Duration(milliseconds: 200), width: 120, height: 80,
           decoration: BoxDecoration(
-            color: widget.isSelected ? _color.withValues(alpha: 0.15) : _hovered ? AppTheme.surfaceVariant : AppTheme.surfaceVariant.withValues(alpha: 0.5),
+            color: widget.isSelected ? _color.withOpacity(0.15) : _hovered ? AppTheme.surfaceVariant : AppTheme.surfaceVariant.withOpacity(0.5),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: widget.isSelected ? _color : AppTheme.outline, width: widget.isSelected ? 2 : 1),
           ),

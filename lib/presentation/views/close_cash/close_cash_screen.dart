@@ -66,7 +66,7 @@ class _CloseCashScreenState extends ConsumerState<CloseCashScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppTheme.accentOrange.withValues(alpha: 0.12), shape: BoxShape.circle), child: const Icon(Icons.lock_rounded, color: AppTheme.accentOrange, size: 36)),
+                    Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppTheme.accentOrange.withOpacity(0.12), shape: BoxShape.circle), child: const Icon(Icons.lock_rounded, color: AppTheme.accentOrange, size: 36)),
                     const SizedBox(height: 16),
                     const Text('Fechamento de Caixa', style: TextStyle(color: AppTheme.onBackground, fontSize: 24, fontWeight: FontWeight.w700)),
                     if (sessao != null) ...[const SizedBox(height: 4), Text('Sessão: ${sessao.codigoSessao}', style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13))],
@@ -113,9 +113,9 @@ class _CloseCashScreenState extends ConsumerState<CloseCashScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: (diff.abs() < 0.01 ? AppTheme.accentGreen : AppTheme.accentRed).withValues(alpha: 0.08),
+        color: (diff.abs() < 0.01 ? AppTheme.accentGreen : AppTheme.accentRed).withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: (diff.abs() < 0.01 ? AppTheme.accentGreen : AppTheme.accentRed).withValues(alpha: 0.3)),
+        border: Border.all(color: (diff.abs() < 0.01 ? AppTheme.accentGreen : AppTheme.accentRed).withOpacity(0.3)),
       ),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         const Text('Diferença:', style: TextStyle(color: AppTheme.onSurface, fontSize: 14, fontWeight: FontWeight.w500)),
@@ -132,7 +132,7 @@ class _SummaryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(width: 115, child: Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.15))),
+      decoration: BoxDecoration(color: color.withOpacity(0.06), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withOpacity(0.15))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(icon, color: color, size: 18), const SizedBox(height: 8),
         Text(label, style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 11)), const SizedBox(height: 2),

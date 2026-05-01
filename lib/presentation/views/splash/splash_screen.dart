@@ -92,7 +92,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         ),
         child: Center(
           child: AnimatedBuilder(
-            listenable: _controller,
+            animation: _controller,
             builder: (context, _) {
               return Opacity(
                 opacity: _fadeAnimation.value,
@@ -125,7 +125,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       SizedBox(
                         width: 28, height: 28,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2.5, color: AppTheme.primaryColor.withValues(alpha: 0.7),
+                          strokeWidth: 2.5, color: AppTheme.primaryColor.withOpacity(0.7),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -140,12 +140,4 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       ),
     );
   }
-}
-
-class AnimatedBuilder extends AnimatedWidget {
-  final Widget Function(BuildContext context, Widget? child) builder;
-  final Widget? child;
-  const AnimatedBuilder({super.key, required super.listenable, required this.builder, this.child});
-  @override
-  Widget build(BuildContext context) => builder(context, child);
 }

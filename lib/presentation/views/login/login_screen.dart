@@ -77,8 +77,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
         ),
         child: Stack(
           children: [
-            Positioned(top: -120, right: -80, child: _decorCircle(300, AppTheme.primaryColor.withValues(alpha: 0.05))),
-            Positioned(bottom: -100, left: -60, child: _decorCircle(250, AppTheme.accentGreen.withValues(alpha: 0.04))),
+            Positioned(top: -120, right: -80, child: _decorCircle(300, AppTheme.primaryColor.withOpacity(0.05))),
+            Positioned(bottom: -100, left: -60, child: _decorCircle(250, AppTheme.accentGreen.withOpacity(0.04))),
             Center(
               child: FadeTransition(
                 opacity: _fadeIn,
@@ -143,7 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
             Positioned(
               bottom: 20, right: 24,
               child: Text('v1.0.0', style: TextStyle(
-                color: AppTheme.onSurfaceVariant.withValues(alpha: 0.4), fontSize: 12,
+                color: AppTheme.onSurfaceVariant.withOpacity(0.4), fontSize: 12,
               )),
             ),
           ],

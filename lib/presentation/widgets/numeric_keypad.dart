@@ -146,15 +146,15 @@ class _KeyButtonState extends State<_KeyButton> {
             gradient: widget.gradient,
             color: widget.gradient == null
                 ? (_pressed
-                    ? (widget.color ?? AppTheme.primaryColor).withValues(alpha: 0.3)
+                    ? (widget.color ?? AppTheme.primaryColor).withOpacity(0.3)
                     : _hovered
-                        ? AppTheme.surfaceVariant.withValues(alpha: 0.9)
+                        ? AppTheme.surfaceVariant.withOpacity(0.9)
                         : AppTheme.surfaceVariant)
                 : null,
             borderRadius: BorderRadius.circular(14),
             border: widget.gradient == null
                 ? Border.all(
-                    color: _hovered ? AppTheme.primaryColor.withValues(alpha: 0.5) : AppTheme.outline,
+                    color: _hovered ? AppTheme.primaryColor.withOpacity(0.5) : AppTheme.outline,
                     width: 1,
                   )
                 : null,

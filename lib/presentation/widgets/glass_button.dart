@@ -165,7 +165,7 @@ class _GlassButtonState extends State<GlassButton>
               },
         onTapCancel: isDisabled ? null : () => _controller.reverse(),
         child: AnimatedBuilder(
-          listenable: _scaleAnimation,
+          animation: _scaleAnimation,
           builder: (context, child) => Transform.scale(
             scale: _scaleAnimation.value,
             child: child,
@@ -177,13 +177,13 @@ class _GlassButtonState extends State<GlassButton>
             decoration: widget.isOutlined
                 ? BoxDecoration(
                     color: _isHovered
-                        ? effectiveColor.withValues(alpha: 0.1)
+                        ? effectiveColor.withOpacity(0.1)
                         : Colors.transparent,
                     borderRadius:
                         BorderRadius.circular(widget.borderRadius),
                     border: Border.all(
                       color: isDisabled
-                          ? effectiveColor.withValues(alpha: 0.3)
+                          ? effectiveColor.withOpacity(0.3)
                           : effectiveColor,
                       width: 1.5,
                     ),
@@ -258,23 +258,5 @@ class _GlassButtonState extends State<GlassButton>
         ),
       ),
     );
-  }
-}
-
-/// AnimatedBuilder helper
-class AnimatedBuilder extends AnimatedWidget {
-  final Widget Function(BuildContext context, Widget? child) builder;
-  final Widget? child;
-
-  const AnimatedBuilder({
-    super.key,
-    required super.listenable,
-    required this.builder,
-    this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return builder(context, child);
   }
 }

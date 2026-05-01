@@ -77,7 +77,7 @@ class AppTheme {
   // ─── Glass Shadows ─────────────────────────────────────────
   static List<BoxShadow> get glassBoxShadow => [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.25),
+          color: Colors.black.withOpacity(0.25),
           blurRadius: 24,
           offset: const Offset(0, 8),
         ),
@@ -85,7 +85,7 @@ class AppTheme {
 
   static List<BoxShadow> glowShadow(Color color) => [
         BoxShadow(
-          color: color.withValues(alpha: 0.25),
+          color: color.withOpacity(0.25),
           blurRadius: 20,
           offset: const Offset(0, 4),
         ),
@@ -93,10 +93,10 @@ class AppTheme {
 
   // ─── Glass Decorations ─────────────────────────────────────
   static BoxDecoration glassCard({Color? borderColor}) => BoxDecoration(
-        color: card.withValues(alpha: 0.85),
+        color: card.withOpacity(0.85),
         borderRadius: BorderRadius.circular(radiusLg),
         border: Border.all(
-          color: borderColor ?? outline.withValues(alpha: 0.6),
+          color: borderColor ?? outline.withOpacity(0.6),
           width: 1,
         ),
         boxShadow: glassBoxShadow,
@@ -104,15 +104,15 @@ class AppTheme {
 
   static BoxDecoration glassCardHighlight({required Color accentColor}) =>
       BoxDecoration(
-        color: card.withValues(alpha: 0.85),
+        color: card.withOpacity(0.85),
         borderRadius: BorderRadius.circular(radiusLg),
         border: Border.all(
-          color: accentColor.withValues(alpha: 0.4),
+          color: accentColor.withOpacity(0.4),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: accentColor.withValues(alpha: 0.12),
+            color: accentColor.withOpacity(0.12),
             blurRadius: 24,
             offset: const Offset(0, 4),
           ),
@@ -243,8 +243,7 @@ class AppTheme {
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        labelStyle: const TextStyle(color: onSurfaceVariant),
-        hintStyle: TextStyle(color: onSurfaceVariant.withValues(alpha: 0.5)),
+        hintStyle: TextStyle(color: onSurfaceVariant.withOpacity(0.5)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

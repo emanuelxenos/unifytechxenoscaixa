@@ -38,7 +38,7 @@ class ConfirmationDialog extends StatelessWidget {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withValues(alpha: 0.6),
+      barrierColor: Colors.black.withOpacity(0.6),
       builder: (context) => ConfirmationDialog(
         title: title,
         message: message,
@@ -70,7 +70,7 @@ class ConfirmationDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: effectiveColor.withValues(alpha: 0.12),
+                color: effectiveColor.withOpacity(0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(

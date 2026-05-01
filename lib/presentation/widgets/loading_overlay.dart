@@ -12,7 +12,7 @@ class LoadingOverlay extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withValues(alpha: 0.5),
+      barrierColor: Colors.black.withOpacity(0.5),
       builder: (_) => LoadingOverlay(message: message),
     );
   }
@@ -84,7 +84,7 @@ class _PulsingLoaderState extends State<_PulsingLoader>
       width: 48,
       height: 48,
       child: AnimatedBuilder(
-        listenable: _controller,
+        animation: _controller,
         builder: (context, _) {
           return CustomPaint(
             painter: _RingPainter(progress: _controller.value),
@@ -138,22 +138,4 @@ class _RingPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _RingPainter oldDelegate) =>
       oldDelegate.progress != progress;
-}
-
-/// AnimatedBuilder helper
-class AnimatedBuilder extends AnimatedWidget {
-  final Widget Function(BuildContext context, Widget? child) builder;
-  final Widget? child;
-
-  const AnimatedBuilder({
-    super.key,
-    required super.listenable,
-    required this.builder,
-    this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return builder(context, child);
-  }
 }

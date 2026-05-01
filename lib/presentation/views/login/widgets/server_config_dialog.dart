@@ -14,7 +14,7 @@ class ServerConfigDialog extends ConsumerStatefulWidget {
     return showDialog(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.6),
+      barrierColor: Colors.black.withOpacity(0.6),
       builder: (_) => const ServerConfigDialog(),
     );
   }
@@ -98,7 +98,7 @@ class _ServerConfigDialogState extends ConsumerState<ServerConfigDialog> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppTheme.accentBlue.withValues(alpha: 0.12),
+                    color: AppTheme.accentBlue.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.dns_rounded, color: AppTheme.accentBlue, size: 22),
