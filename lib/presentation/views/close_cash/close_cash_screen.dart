@@ -7,6 +7,7 @@ import 'package:unifytechxenoscaixa/presentation/providers/cash_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/app_snackbar.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_button.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_card.dart';
+import 'package:unifytechxenoscaixa/domain/models/cash_session.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_input.dart';
 
 class CloseCashScreen extends ConsumerStatefulWidget {
@@ -54,8 +55,26 @@ class _CloseCashScreenState extends ConsumerState<CloseCashScreen> {
     final cashState = ref.watch(cashNotifierProvider);
     final sessao = cashState.sessao;
 
-    // Se a sessão sumiu (foi fechada), mostra um loader enquanto navega para o login
-    if (sessao == null && !cashState.isLoading) {
+    // Se houver erro, mostra o erro em vez de loading infinito
+    if (cashState.error != null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: AppTheme.accentRed, size: 48),
+              const SizedBox(height: 16),
+              Text(cashState.error!, style: const TextStyle(color: Colors.white)),
+              const SizedBox(height: 24),
+              GlassButton.outline(label: 'Voltar', onPressed: () => Navigator.of(context).pushReplacementNamed('/sale')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Se a sessão sumiu e não há erro, mostra loader apenas se estiver carregando
+    if (sessao == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
