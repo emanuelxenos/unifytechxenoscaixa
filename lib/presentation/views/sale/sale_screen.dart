@@ -462,17 +462,25 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
                           ]),
                         ]),
                       ),
-                      const SizedBox(height: 20),
-                      if (saleState.cart.isNotEmpty)
+                      // ─── Display de Produto Premium ──────────────────
+                      if (saleState.cart.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        _ProductDisplayCard(
+                          item: saleState.cart.last,
+                          totalItens: saleState.cart.length,
+                        ),
+                      ] else ...[
+                        const SizedBox(height: 10),
                         Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(color: AppTheme.accentGreen.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.accentGreen.withOpacity(0.2))),
-                          child: Row(children: [
-                            const Icon(Icons.check_circle_rounded, color: AppTheme.accentGreen, size: 20), const SizedBox(width: 10),
-                            Expanded(child: Text(saleState.cart.last.produtoNome, style: const TextStyle(color: AppTheme.onSurface, fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
-                            Text(Formatters.currency(saleState.cart.last.total), style: const TextStyle(color: AppTheme.accentGreen, fontSize: 14, fontWeight: FontWeight.w600)),
+                          height: 220, width: double.infinity,
+                          decoration: AppTheme.glassCard(),
+                          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Icon(Icons.qr_code_scanner_rounded, color: AppTheme.onSurfaceVariant.withOpacity(0.2), size: 64),
+                            const SizedBox(height: 16),
+                            Text('Aguardando leitura...', style: TextStyle(color: AppTheme.onSurfaceVariant.withOpacity(0.4), fontSize: 14)),
                           ]),
                         ),
+                      ],
                       const Spacer(),
                       GlassButton.success(label: 'Finalizar (F2)', icon: Icons.shopping_cart_checkout_rounded, onPressed: saleState.isEmpty ? null : _showPayment, expanded: true, height: 60),
                       const SizedBox(height: 10),
@@ -540,6 +548,101 @@ class _MenuItemState extends State<_MenuItem> {
               ),
           ]),
         ),
+      ),
+    );
+  }
+}
+
+class _ProductDisplayCard extends StatelessWidget {
+  final dynamic item;
+  final int totalItens;
+
+  const _ProductDisplayCard({required this.item, required this.totalItens});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: AppTheme.glassCard(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Área da Imagem
+          Container(
+            height: 180,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.2),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: item.produtoFotoUrl != null && item.produtoFotoUrl!.isNotEmpty
+                  ? Image.network(
+                      item.produtoFotoUrl!,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                      loadingBuilder: (_, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    )
+                  : _buildPlaceholder(),
+            ),
+          ),
+          
+          // Informações do Produto
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                      child: Text('ITEM #$totalItens', style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                    ),
+                    Text(Formatters.currency(item.precoUnitario), style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 14, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  item.produtoNome,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppTheme.onBackground, fontSize: 18, fontWeight: FontWeight.w700, height: 1.2),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Subtotal:', style: TextStyle(color: AppTheme.onSurfaceVariant.withOpacity(0.6), fontSize: 12)),
+                    Text(
+                      Formatters.currency(item.total),
+                      style: const TextStyle(color: AppTheme.accentGreen, fontSize: 20, fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inventory_2_rounded, color: AppTheme.onSurfaceVariant.withOpacity(0.1), size: 48),
+          const SizedBox(height: 8),
+          Text(
+            item.produtoNome.substring(0, 1).toUpperCase(),
+            style: TextStyle(color: AppTheme.onSurfaceVariant.withOpacity(0.1), fontSize: 40, fontWeight: FontWeight.w900),
+          ),
+        ],
       ),
     );
   }

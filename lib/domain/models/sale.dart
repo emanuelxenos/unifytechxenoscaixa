@@ -197,6 +197,7 @@ class SaleResponse {
 class CartItem {
   final int produtoId;
   final String produtoNome;
+  final String? produtoFotoUrl;
   final String unidadeVenda;
   final double precoUnitario;
   double quantidade;
@@ -205,6 +206,7 @@ class CartItem {
   CartItem({
     required this.produtoId,
     required this.produtoNome,
+    this.produtoFotoUrl,
     this.unidadeVenda = 'UN',
     required this.precoUnitario,
     this.quantidade = 1,

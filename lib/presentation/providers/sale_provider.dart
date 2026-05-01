@@ -68,6 +68,7 @@ class SaleNotifier extends _$SaleNotifier {
       newCart.add(CartItem(
         produtoId: product.id,
         produtoNome: product.nome,
+        produtoFotoUrl: product.fotoUrl,
         unidadeVenda: product.unidadeVenda,
         precoUnitario: product.precoEfetivo,
         quantidade: qty,
