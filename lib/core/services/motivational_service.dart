@@ -157,34 +157,29 @@ class MotivationalService {
   Future<void> speakMotivational(String nomeOperador) async {
     try {
       final fraseBase = _frases[_random.nextInt(_frases.length)];
-      
-      // Garante que o nome do operador seja usado na frase sorteada
       String mensagem = fraseBase.replaceAll("{nome}", nomeOperador);
       
-      // Sorteio para o "Te amo" (Chance de 20%)
       if (_random.nextInt(100) < 20) {
         mensagem += ". Sabe que eu te amo, né?";
       }
 
       final encodedMsg = Uri.encodeComponent(mensagem);
       
-      // Motor Google Neural de alta disponibilidade - INFALÍVEL
+      // Motor Google pt-BR (Alta Disponibilidade e Sotaque Natural)
       final url = "https://translate.google.com/translate_tts?ie=UTF-8&q=$encodedMsg&tl=pt-br&client=tw-ob";
 
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final tempDir = Directory.systemTemp;
         final tempFile = File('${tempDir.path}/voz_humana_final.mp3');
         await tempFile.writeAsBytes(response.bodyBytes);
 
-        // O segredo está aqui: Aceleramos e ajustamos o pitch para tirar o tom robótico
         await _audioPlayer.setPlaybackRate(2.0); 
         await _audioPlayer.play(DeviceFileSource(tempFile.path));
-        
-        print("Tocando voz HUMANA (Google Neural Acelerada): $mensagem");
+        print("Tocando voz HUMANA (Google pt-BR Acelerada): $mensagem");
       } else {
-        print("Erro crítico ao buscar voz: ${response.statusCode}");
+        print("Erro ao buscar voz Google: ${response.statusCode}");
       }
     } catch (e) {
       print("Erro ao processar voz humana: $e");
