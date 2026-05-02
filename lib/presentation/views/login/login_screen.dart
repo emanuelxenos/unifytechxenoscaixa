@@ -7,6 +7,7 @@ import 'package:unifytechxenoscaixa/presentation/widgets/glass_button.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_card.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_input.dart';
 import 'package:unifytechxenoscaixa/presentation/views/login/widgets/server_config_dialog.dart';
+import 'package:unifytechxenoscaixa/core/services/motivational_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -54,7 +55,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
     if (!mounted) return;
     if (success) {
       final authState = ref.read(authNotifierProvider);
-      AppSnackbar.success(context, 'Bem-vindo, ${authState.user?.nome ?? ""}!');
+      final nome = authState.user?.nome ?? "";
+      AppSnackbar.success(context, 'Bem-vindo, $nome!');
+      
+      // Voz motivadora
+      MotivationalService().speakMotivational(nome);
+      
       Navigator.of(context).pushReplacementNamed('/open-cash');
     } else {
       final authState = ref.read(authNotifierProvider);
