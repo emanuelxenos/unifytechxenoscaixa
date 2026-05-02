@@ -7,6 +7,7 @@ import 'package:unifytechxenoscaixa/presentation/views/login/login_screen.dart';
 import 'package:unifytechxenoscaixa/presentation/views/open_cash/open_cash_screen.dart';
 import 'package:unifytechxenoscaixa/presentation/views/sale/sale_screen.dart';
 import 'package:unifytechxenoscaixa/presentation/views/close_cash/close_cash_screen.dart';
+import 'package:unifytechxenoscaixa/presentation/views/settings/payment_settings_screen.dart';
 import 'package:unifytechxenoscaixa/presentation/views/settings/settings_screen.dart';
 
 class PDVApp extends ConsumerWidget {
@@ -27,6 +28,7 @@ class PDVApp extends ConsumerWidget {
         '/sale': (context) => const SaleScreen(),
         '/close-cash': (context) => const CloseCashScreen(),
         '/settings': (context) => const SettingsScreen(),
+        '/settings/payment': (context) => const PaymentSettingsScreen(),
       },
     );
   }

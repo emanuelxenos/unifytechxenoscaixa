@@ -98,20 +98,34 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
   }
 
   Future<void> _handleSearch(String value) async {
-    final query = value.trim();
+    String query = value.trim();
     if (query.isEmpty) return;
+
+    double quantity = 1;
+    
+    // Suporte a multiplicador: [QTD]*[CODIGO]
+    if (query.contains('*')) {
+      final parts = query.split('*');
+      if (parts.length >= 2 && parts[0].isNotEmpty) {
+        quantity = double.tryParse(parts[0].replaceAll(',', '.')) ?? 1;
+        query = parts[1].trim(); // O que sobra é o código
+        
+        // Se após o '*' não tiver nada, apenas aguarda o código
+        if (query.isEmpty) return; 
+      }
+    }
 
     final productNotifier = ref.read(productNotifierProvider.notifier);
     final saleNotifier = ref.read(saleNotifierProvider.notifier);
 
     final product = await productNotifier.searchByBarcode(query);
     if (product != null) {
-      saleNotifier.addProduct(product);
+      saleNotifier.addProduct(product, qty: quantity);
       AudioService().playSuccess();
       _searchController.clear();
       _searchFocus.requestFocus();
       _scrollToBottom();
-      if (mounted) AppSnackbar.success(context, '${product.nome} adicionado');
+      if (mounted) AppSnackbar.success(context, '$quantity x ${product.nome} adicionado');
       return;
     }
 
@@ -120,12 +134,12 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
       AudioService().playError();
       if (mounted) AppSnackbar.warning(context, 'Produto não encontrado');
     } else if (results.length == 1) {
-      saleNotifier.addProduct(results.first);
+      saleNotifier.addProduct(results.first, qty: quantity);
       AudioService().playSuccess();
       _searchController.clear();
       productNotifier.clearSearch();
       _scrollToBottom();
-      if (mounted) AppSnackbar.success(context, '${results.first.nome} adicionado');
+      if (mounted) AppSnackbar.success(context, '$quantity x ${results.first.nome} adicionado');
     }
     _searchFocus.requestFocus();
   }

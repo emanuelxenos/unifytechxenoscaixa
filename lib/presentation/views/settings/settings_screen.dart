@@ -91,6 +91,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   GlassInput(controller: _terminalController, label: 'ID do Terminal', hint: 'CAIXA-01', prefixIcon: Icons.badge_rounded),
                 ])),
                 const SizedBox(height: 16),
+                // --- NOVA SEÇÃO DE PAGAMENTO ---
+                GlassCard(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [const Icon(Icons.credit_card_rounded, color: AppTheme.accentOrange, size: 20), const SizedBox(width: 10), const Text('Pagamentos', style: TextStyle(color: AppTheme.onBackground, fontSize: 16, fontWeight: FontWeight.w600))]),
+                  const SizedBox(height: 18),
+                  const Text('Configure a integração com sua maquininha de cartão.', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13)),
+                  const SizedBox(height: 16),
+                  GlassButton.outline(
+                    label: 'Configurar Maquininha', 
+                    icon: Icons.settings_remote_rounded, 
+                    onPressed: () => Navigator.of(context).pushNamed('/settings/payment'), 
+                    expanded: true, 
+                    height: 44,
+                    color: AppTheme.accentOrange
+                  ),
+                ])),
+                const SizedBox(height: 16),
                 GlassCard(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [const Icon(Icons.info_rounded, color: AppTheme.primaryColor, size: 20), const SizedBox(width: 10), const Text('Sobre', style: TextStyle(color: AppTheme.onBackground, fontSize: 16, fontWeight: FontWeight.w600))]),
                   const SizedBox(height: 14),

@@ -78,6 +78,17 @@ class ConfigService {
     await p.setString(AppConstants.keyTerminalId, terminalId);
   }
 
+  // ─── Payment Config ─────────────────────────────────────────
+  Future<String?> getPaymentSettings() async {
+    final p = await prefs;
+    return p.getString('payment_settings');
+  }
+
+  Future<void> savePaymentSettings(String json) async {
+    final p = await prefs;
+    await p.setString('payment_settings', json);
+  }
+
   // ─── Full Clear ─────────────────────────────────────────────
   Future<void> clearAll() async {
     await clearAuthToken();
