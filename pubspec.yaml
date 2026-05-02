@@ -29,6 +29,10 @@ dependencies:
   # Audio feedback
   audioplayers: ^6.4.0
 
+  # AI & Path management
+  google_generative_ai: ^0.4.0
+  path_provider: ^2.1.0
+
   # Icons
   cupertino_icons: ^1.0.8
 
