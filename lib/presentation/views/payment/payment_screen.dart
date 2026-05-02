@@ -11,6 +11,7 @@ import 'package:unifytechxenoscaixa/presentation/widgets/app_snackbar.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_button.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/payment_provider.dart';
 import 'package:unifytechxenoscaixa/core/services/payment/card_payment_provider.dart';
+import 'package:unifytechxenoscaixa/presentation/widgets/customer_search_dialog.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key});
@@ -70,8 +71,13 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     if (key == LogicalKeyboardKey.digit3) { _selectByOrdem(3); return true; }
     if (key == LogicalKeyboardKey.digit4) { _selectByOrdem(4); return true; }
     if (key == LogicalKeyboardKey.digit5) { _selectByOrdem(5); return true; }
+    if (key == LogicalKeyboardKey.f10) { _showCustomerSearch(); return true; }
 
     return false;
+  }
+
+  void _showCustomerSearch() {
+    CustomerSearchDialog.show(context);
   }
 
   double get _totalPago => _pagamentos.fold(0.0, (s, p) => s + p.valor);
@@ -262,7 +268,17 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   child: Row(children: [
                     const Icon(Icons.payment_rounded, color: Colors.white, size: 28), const SizedBox(width: 14),
                     const Expanded(child: Text('Pagamento', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700))),
-                    Text(Formatters.currency(_valorTotal), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(Formatters.currency(_valorTotal), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+                        if (saleState.selectedCustomer != null)
+                          Text(
+                            'Cliente: ${saleState.selectedCustomer!.nome}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                      ],
+                    ),
                   ]),
                 ),
                 Expanded(
