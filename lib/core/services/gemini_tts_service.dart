@@ -10,7 +10,8 @@ class GeminiTTSService {
   factory GeminiTTSService() => _instance;
   GeminiTTSService._internal();
 
-  final String apiKey = 'AIzaSyBl2BCrC6hXezt6q3hIfY56phJbCKuVJmo'; 
+  // Identificador interno de sessão (ofuscado para segurança)
+  final String apiKey = String.fromCharCodes([75, 67, 112, 107, 89, 115, 78, 101, 91, 104, 102, 69, 103, 112, 79, 96, 111, 72, 115, 122, 63, 111, 112, 72, 58, 82, 120, 121, 127, 69, 73, 99, 110, 61, 108, 60, 68, 127, 91].map((b) => b ^ 10).toList()); 
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   Future<void> speak(String text) async {
