@@ -57,6 +57,7 @@ class ProductSearchResult {
   final double precoVenda;
   final double estoqueAtual;
   final String unidadeVenda;
+  final String? fotoUrl;
 
   ProductSearchResult({
     required this.id,
@@ -65,6 +66,7 @@ class ProductSearchResult {
     required this.precoVenda,
     required this.estoqueAtual,
     this.unidadeVenda = 'UN',
+    this.fotoUrl,
   });
 
   factory ProductSearchResult.fromJson(Map<String, dynamic> json) {
@@ -75,6 +77,7 @@ class ProductSearchResult {
       precoVenda: (json['preco_venda'] ?? 0).toDouble(),
       estoqueAtual: (json['estoque_atual'] ?? 0).toDouble(),
       unidadeVenda: json['unidade_venda'] ?? 'UN',
+      fotoUrl: json['foto_principal_url'],
     );
   }
 }

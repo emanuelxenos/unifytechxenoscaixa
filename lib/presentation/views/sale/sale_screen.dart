@@ -8,6 +8,7 @@ import 'package:unifytechxenoscaixa/presentation/providers/auth_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/cash_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/product_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/sale_provider.dart';
+import 'package:unifytechxenoscaixa/presentation/providers/service_providers.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/app_snackbar.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/confirmation_dialog.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_button.dart';
@@ -573,14 +574,36 @@ class _MenuItemState extends State<_MenuItem> {
   }
 }
 
-class _ProductDisplayCard extends StatelessWidget {
+class _ProductDisplayCard extends ConsumerWidget {
   final dynamic item;
   final int totalItens;
 
   const _ProductDisplayCard({required this.item, required this.totalItens});
 
+  String _formatImageUrl(String url, WidgetRef ref) {
+    if (url.isEmpty) return '';
+    if (url.startsWith('http')) return url;
+    
+    final apiService = ref.read(apiServiceNotifierProvider);
+    final baseUrl = apiService.baseUrl;
+    
+    // Base limpa sem barra no final
+    final cleanBase = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    
+    // Se a URL já começa com "uploads", não precisamos adicionar de novo
+    // pois a rota no backend r.Handle("/uploads/*", ...) já espera o caminho completo
+    // que vem depois da porta.
+    final cleanUrl = url.startsWith('/') ? url : (url.startsWith('uploads') ? '/$url' : '/uploads/$url');
+    
+    final finalUrl = '$cleanBase$cleanUrl';
+    debugPrint('URL DA IMAGEM: $finalUrl');
+    return finalUrl;
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final imageUrl = _formatImageUrl(item.produtoFotoUrl ?? '', ref);
+
     return Container(
       width: double.infinity,
       decoration: AppTheme.glassCard(),
@@ -597,9 +620,9 @@ class _ProductDisplayCard extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: item.produtoFotoUrl != null && item.produtoFotoUrl!.isNotEmpty
+              child: imageUrl.isNotEmpty
                   ? Image.network(
-                      item.produtoFotoUrl!,
+                      imageUrl,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => _buildPlaceholder(),
                       loadingBuilder: (_, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
