@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:unifytechxenoscaixa/core/theme/app_theme.dart';
 import 'package:unifytechxenoscaixa/core/utils/formatters.dart';
+import 'package:unifytechxenoscaixa/domain/models/cliente.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/auth_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/cash_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/product_provider.dart';
@@ -19,6 +20,7 @@ import 'package:unifytechxenoscaixa/presentation/widgets/status_bar.dart';
 import 'package:unifytechxenoscaixa/presentation/views/payment/payment_screen.dart';
 import 'package:unifytechxenoscaixa/core/services/navigation_service.dart';
 import 'package:unifytechxenoscaixa/core/services/audio_service.dart';
+import 'package:unifytechxenoscaixa/presentation/widgets/customer_search_dialog.dart';
 
 class SaleScreen extends ConsumerStatefulWidget {
   const SaleScreen({super.key});
@@ -75,6 +77,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     if (key == LogicalKeyboardKey.f7) { ProductSearchDialog.show(context); return true; }
     if (key == LogicalKeyboardKey.f8) { _closeCash(); return true; }
     if (key == LogicalKeyboardKey.f9) { Navigator.of(context).pushNamed('/settings'); return true; }
+    if (key == LogicalKeyboardKey.f10) { CustomerSearchDialog.show(context); return true; }
     if (key == LogicalKeyboardKey.delete) { _showRemoveItemDialog(); return true; }
     if (key == LogicalKeyboardKey.escape) {
       if (_searchController.text.isNotEmpty) {
@@ -193,7 +196,8 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
               _MenuItem(icon: Icons.lock_rounded, label: 'Fechar Caixa', shortcut: 'F8', onTap: () { Navigator.pop(ctx); _closeCash(); }),
               _MenuItem(icon: Icons.settings_rounded, label: 'Configurações', shortcut: 'F9', onTap: () { Navigator.pop(ctx); Navigator.of(context).pushNamed('/settings'); }),
               const Divider(color: AppTheme.divider, height: 1),
-              _MenuItem(icon: Icons.keyboard_rounded, label: 'Atalhos de Teclado', shortcut: 'F1', onTap: () { Navigator.pop(ctx); ShortcutHelpDialog.show(context); }),
+               _MenuItem(icon: Icons.keyboard_rounded, label: 'Atalhos de Teclado', shortcut: 'F1', onTap: () { Navigator.pop(ctx); ShortcutHelpDialog.show(context); }),
+               _MenuItem(icon: Icons.person_search_rounded, label: 'Vincular Cliente', shortcut: 'F10', onTap: () { Navigator.pop(ctx); CustomerSearchDialog.show(context); }),
             ],
           ),
         ),
@@ -467,42 +471,57 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
                   ),
                   child: Column(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: AppTheme.glassCard(),
-                        child: Column(children: [
-                          _SummaryRow(label: 'Subtotal', value: Formatters.currency(saleState.subtotal)),
-                          if (saleState.totalDiscountAll > 0) ...[
-                            const SizedBox(height: 10),
-                            _SummaryRow(label: 'Desconto', value: '- ${Formatters.currency(saleState.totalDiscountAll)}', valueColor: AppTheme.accentRed),
-                          ],
-                          const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: Divider(color: AppTheme.divider, height: 1)),
-                          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                            const Text('TOTAL', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 1)),
-                            Text(Formatters.currency(saleState.total), style: const TextStyle(color: AppTheme.accentGreen, fontSize: 32, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
-                          ]),
-                        ]),
+                      // ─── Customer Card ────────────────────────
+                      _CustomerSelectionCard(
+                        customer: saleState.selectedCustomer,
+                        onTap: () => CustomerSearchDialog.show(context),
+                        onRemove: () => ref.read(saleNotifierProvider.notifier).removeCustomer(),
                       ),
-                      // ─── Display de Produto Premium ──────────────────
-                      if (saleState.cart.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        _ProductDisplayCard(
-                          item: saleState.cart.last,
-                          totalItens: saleState.cart.length,
+                      const SizedBox(height: 12),
+                      // ─── Summary & Product Info (Scrollable) ───────────
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: AppTheme.glassCard(),
+                                child: Column(children: [
+                                  _SummaryRow(label: 'Subtotal', value: Formatters.currency(saleState.subtotal)),
+                                  if (saleState.totalDiscountAll > 0) ...[
+                                    const SizedBox(height: 10),
+                                    _SummaryRow(label: 'Desconto', value: '- ${Formatters.currency(saleState.totalDiscountAll)}', valueColor: AppTheme.accentRed),
+                                  ],
+                                  const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: Divider(color: AppTheme.divider, height: 1)),
+                                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                                    const Text('TOTAL', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 1)),
+                                    Text(Formatters.currency(saleState.total), style: const TextStyle(color: AppTheme.accentGreen, fontSize: 32, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+                                  ]),
+                                ]),
+                              ),
+                              const SizedBox(height: 12),
+                              // ─── Display de Produto Premium ──────────────────
+                              if (saleState.cart.isNotEmpty) ...[
+                                _ProductDisplayCard(
+                                  item: saleState.cart.last,
+                                  totalItens: saleState.cart.length,
+                                ),
+                              ] else ...[
+                                Container(
+                                  height: 180, width: double.infinity,
+                                  decoration: AppTheme.glassCard(),
+                                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                    Icon(Icons.qr_code_scanner_rounded, color: AppTheme.onSurfaceVariant.withOpacity(0.2), size: 64),
+                                    const SizedBox(height: 16),
+                                    Text('Aguardando leitura...', style: TextStyle(color: AppTheme.onSurfaceVariant.withOpacity(0.4), fontSize: 14)),
+                                  ]),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
-                      ] else ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          height: 220, width: double.infinity,
-                          decoration: AppTheme.glassCard(),
-                          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Icon(Icons.qr_code_scanner_rounded, color: AppTheme.onSurfaceVariant.withOpacity(0.2), size: 64),
-                            const SizedBox(height: 16),
-                            Text('Aguardando leitura...', style: TextStyle(color: AppTheme.onSurfaceVariant.withOpacity(0.4), fontSize: 14)),
-                          ]),
-                        ),
-                      ],
-                      const Spacer(),
+                      ),
+                      const SizedBox(height: 12),
                       GlassButton.success(label: 'Finalizar (F2)', icon: Icons.shopping_cart_checkout_rounded, onPressed: saleState.isEmpty ? null : _showPayment, expanded: true, height: 60),
                       const SizedBox(height: 10),
                       Row(children: [
@@ -686,6 +705,111 @@ class _ProductDisplayCard extends ConsumerWidget {
             style: TextStyle(color: AppTheme.onSurfaceVariant.withOpacity(0.1), fontSize: 40, fontWeight: FontWeight.w900),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CustomerSelectionCard extends StatelessWidget {
+  final Cliente? customer;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  const _CustomerSelectionCard({
+    this.customer,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCustomer = customer != null;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: hasCustomer ? 12 : 10),
+          decoration: AppTheme.glassCard().copyWith(
+            border: Border.all(
+              color: hasCustomer ? AppTheme.primaryColor.withOpacity(0.4) : AppTheme.outline.withOpacity(0.3),
+              width: hasCustomer ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (hasCustomer ? AppTheme.primaryColor : AppTheme.onSurfaceVariant).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  hasCustomer ? Icons.person_rounded : Icons.person_add_rounded,
+                  color: hasCustomer ? AppTheme.primaryColor : AppTheme.onSurfaceVariant,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      hasCustomer ? customer!.nome : 'Vincular Cliente (F10)',
+                      style: TextStyle(
+                        color: hasCustomer ? AppTheme.onBackground : AppTheme.onSurfaceVariant,
+                        fontSize: hasCustomer ? 14 : 13,
+                        fontWeight: hasCustomer ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (hasCustomer) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(
+                            customer!.cpfCnpj ?? 'Sem documento',
+                            style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 10),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Crédito: ${Formatters.currency(customer!.creditoDisponivel)}',
+                              style: const TextStyle(color: AppTheme.accentGreen, fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (hasCustomer)
+                Material(
+                  color: Colors.transparent,
+                  child: IconButton(
+                    onPressed: onRemove,
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(4),
+                    icon: const Icon(Icons.close_rounded, size: 16, color: AppTheme.onSurfaceVariant),
+                    tooltip: 'Remover cliente',
+                  ),
+                )
+              else
+                const Icon(Icons.chevron_right_rounded, color: AppTheme.onSurfaceVariant, size: 18),
+            ],
+          ),
+        ),
       ),
     );
   }

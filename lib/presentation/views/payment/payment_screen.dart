@@ -5,6 +5,7 @@ import 'package:unifytechxenoscaixa/core/theme/app_theme.dart';
 import 'package:unifytechxenoscaixa/core/utils/formatters.dart';
 import 'package:unifytechxenoscaixa/domain/models/payment_method.dart';
 import 'package:unifytechxenoscaixa/domain/models/sale.dart';
+import 'package:unifytechxenoscaixa/presentation/providers/cash_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/sale_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/app_snackbar.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_button.dart';
@@ -20,13 +21,6 @@ class PaymentScreen extends ConsumerStatefulWidget {
 class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   final _valorController = TextEditingController();
 
-  final _formas = [
-    PaymentMethod(id: 1, nome: 'Dinheiro', codigo: '01', tipo: 'dinheiro', requerTroco: true),
-    PaymentMethod(id: 2, nome: 'Débito', codigo: '02', tipo: 'cartao_debito'),
-    PaymentMethod(id: 3, nome: 'Crédito', codigo: '03', tipo: 'cartao_credito'),
-    PaymentMethod(id: 4, nome: 'PIX', codigo: '04', tipo: 'pix'),
-  ];
-
   final List<_PaymentEntry> _pagamentos = [];
   int? _selectedFormaId;
   double _valorTotal = 0;
@@ -38,8 +32,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     super.initState();
     HardwareKeyboard.instance.addHandler(_handleInternalKey);
     final saleState = ref.read(saleNotifierProvider);
+    final cashState = ref.read(cashNotifierProvider);
     _valorTotal = saleState.total;
-    _selectedFormaId = 1; 
+    
+    // Seleciona a primeira forma disponível (geralmente Dinheiro)
+    if (cashState.paymentMethods.isNotEmpty) {
+      _selectedFormaId = cashState.paymentMethods.first.id;
+    }
+
     _valorController.text = _valorTotal.toStringAsFixed(2).replaceAll('.', ',');
     _valorFocus.requestFocus();
   }
@@ -65,10 +65,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       return true;
     }
 
-    if (key == LogicalKeyboardKey.digit1) { _selectForma(1); return true; }
-    if (key == LogicalKeyboardKey.digit2) { _selectForma(2); return true; }
-    if (key == LogicalKeyboardKey.digit3) { _selectForma(3); return true; }
-    if (key == LogicalKeyboardKey.digit4) { _selectForma(4); return true; }
+    if (key == LogicalKeyboardKey.digit1) { _selectByOrdem(1); return true; }
+    if (key == LogicalKeyboardKey.digit2) { _selectByOrdem(2); return true; }
+    if (key == LogicalKeyboardKey.digit3) { _selectByOrdem(3); return true; }
+    if (key == LogicalKeyboardKey.digit4) { _selectByOrdem(4); return true; }
+    if (key == LogicalKeyboardKey.digit5) { _selectByOrdem(5); return true; }
 
     return false;
   }
@@ -77,26 +78,69 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   double get _restante => _valorTotal - _totalPago;
   double get _troco => _restante >= 0 ? 0 : -_restante;
 
+  void _selectByOrdem(int ordem) {
+    final formas = ref.read(cashNotifierProvider).paymentMethods;
+    if (ordem <= formas.length) {
+      _selectForma(formas[ordem - 1].id);
+    }
+  }
+
   void _selectForma(int id) {
+    final formas = ref.read(cashNotifierProvider).paymentMethods;
+    final forma = formas.firstWhere((f) => f.id == id);
+    final valorRestante = _restante;
+
+    // Melhora UX: Se for Crediário, PIX ou Cartão, adiciona DIRETO e limpa a seleção anterior
+    final tipo = forma.tipo.toLowerCase();
+    if (tipo == 'crediario' || tipo == 'pix' || tipo == 'cartao_debito' || tipo == 'cartao_credito') {
+      if (valorRestante > 0) {
+        setState(() => _selectedFormaId = null); // Limpa para o campo sumir na hora
+        _addPayment(id: id, forcedValor: valorRestante);
+        return; 
+      }
+    }
+
     setState(() {
       _selectedFormaId = id;
-      _valorController.text = _restante > 0 ? _restante.toStringAsFixed(2).replaceAll('.', ',') : '0,00';
+      _valorController.text = valorRestante > 0 ? valorRestante.toStringAsFixed(2).replaceAll('.', ',') : '0,00';
     });
   }
 
-  void _addPayment() {
-    if (_selectedFormaId == null) { AppSnackbar.warning(context, 'Selecione uma forma de pagamento'); return; }
-    final valor = double.tryParse(_valorController.text.replaceAll('.', '').replaceAll(',', '.')) ?? 0;
+  void _addPayment({int? id, double? forcedValor}) {
+    final targetId = id ?? _selectedFormaId;
+    if (targetId == null) { AppSnackbar.warning(context, 'Selecione uma forma de pagamento'); return; }
+    
+    final valor = forcedValor ?? (double.tryParse(_valorController.text.replaceAll('.', '').replaceAll(',', '.')) ?? 0);
     if (valor <= 0) { AppSnackbar.warning(context, 'Informe um valor válido'); return; }
     
-    final forma = _formas.firstWhere((f) => f.id == _selectedFormaId);
+    final formas = ref.read(cashNotifierProvider).paymentMethods;
+    final forma = formas.firstWhere((f) => f.id == targetId);
     
+    // Validação de Crediário
+    if (forma.tipo == 'crediario') {
+      final saleState = ref.read(saleNotifierProvider);
+      if (saleState.selectedCustomer == null) {
+        AppSnackbar.error(context, 'Vincule um cliente (F10) para usar o Crediário');
+        return;
+      }
+
+      final disponivel = saleState.selectedCustomer!.creditoDisponivel;
+      if (valor > disponivel + 0.01) {
+        // FECHA O MODAL PARA VER O ERRO NA TELA PRINCIPAL
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+        AppSnackbar.error(context, 'Limite do crediário atingido (Disp: ${Formatters.currency(disponivel)}). Falar com o gerente para liberar mais crédito');
+        return;
+      }
+    }
+
     // Se for cartão, tentamos o fluxo integrado
     if (forma.tipo == 'cartao_debito' || forma.tipo == 'cartao_credito') {
       _processCardPayment(forma, valor);
     } else {
       setState(() { 
-        _pagamentos.add(_PaymentEntry(formaPagamentoId: forma.id, nome: forma.nome, valor: valor)); 
+        _pagamentos.add(_PaymentEntry(formaPagamentoId: forma.id, nome: forma.nome, valor: valor, tipo: forma.tipo)); 
         _selectedFormaId = null; 
       });
     }
@@ -114,6 +158,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           formaPagamentoId: forma.id, 
           nome: '${forma.nome} (${response.cardBrand})', 
           valor: valor,
+          tipo: forma.tipo,
           transactionId: response.transactionId,
         ));
         _selectedFormaId = null;
@@ -144,7 +189,19 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       autorizacao: p.transactionId, // Envia o ID da maquininha para o banco
     )).toList();
     
-    await saleNotifier.finalizeSale(pagamentos);
+    await saleNotifier.finalizeSale(pagamentos, clienteId: saleState.selectedCustomer?.id);
+  }
+
+  bool _shouldShowValueField(List<PaymentMethod> formas) {
+    if (_selectedFormaId == null) return false;
+    try {
+      final forma = formas.firstWhere((f) => f.id == _selectedFormaId);
+      final tipo = forma.tipo.toLowerCase();
+      // SÓ MOSTRA O CAMPO SE FOR DINHEIRO OU OUTROS
+      return tipo == 'dinheiro' || tipo == 'outros';
+    } catch (e) {
+      return false;
+    }
   }
 
   @override
@@ -158,13 +215,35 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     final saleState = ref.watch(saleNotifierProvider);
+    final cashState = ref.watch(cashNotifierProvider);
     final paymentState = ref.watch(paymentNotifierProvider);
 
-    // AUTODESTRUIÇÃO: Cada instância deste modal se fecha ao detectar sucesso
+    // Se as formas de pagamento carregarem depois do initState, seleciona a primeira (APENAS UMA VEZ)
+    if (_selectedFormaId == null && cashState.paymentMethods.isNotEmpty && _pagamentos.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedFormaId == null && _pagamentos.isEmpty) {
+          _selectForma(cashState.paymentMethods.first.id);
+        }
+      });
+    }
+
+    // Escuta sucesso
     ref.listen(saleNotifierProvider, (prev, next) {
       if (next.lastSaleResponse != null && next.lastSaleResponse != prev?.lastSaleResponse) {
         Navigator.of(context).pop();
         AppSnackbar.success(context, 'Venda #${next.lastSaleResponse?.numeroVenda} finalizada!');
+      }
+    });
+
+    // Escuta erro (Ex: Limite excedido no backend)
+    ref.listen(saleNotifierProvider, (prev, next) {
+      if (next.error != null) {
+        // FECHA O MODAL NA MARRETA
+        Navigator.of(context).pop();
+        // Mostra o erro na tela principal
+        AppSnackbar.error(context, next.error!);
+        // Limpa o erro para não disparar de novo
+        Future.microtask(() => ref.read(saleNotifierProvider.notifier).clearError());
       }
     });
 
@@ -192,9 +271,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       const Text('Forma de Pagamento', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 12),
-                      Wrap(spacing: 10, runSpacing: 10, children: _formas.map((f) => _PaymentMethodChip(forma: f, isSelected: _selectedFormaId == f.id, onTap: () => _selectForma(f.id))).toList()),
+                      Wrap(spacing: 10, runSpacing: 10, children: cashState.paymentMethods.map((f) => _PaymentMethodChip(forma: f, isSelected: _selectedFormaId == f.id, onTap: () => _selectForma(f.id))).toList()),
                       const SizedBox(height: 20),
-                      if (_selectedFormaId != null) ...[
+                      
+                      // LÓGICA DE EXIBIÇÃO DO CAMPO DE VALOR: SÓ APARECE PARA DINHEIRO
+                      if (_selectedFormaId != null && _shouldShowValueField(cashState.paymentMethods)) ...[
                         Row(children: [
                           Expanded(child: TextField(
                             controller: _valorController, 
@@ -304,8 +385,8 @@ class _PaymentMethodChip extends StatefulWidget {
 
 class _PaymentMethodChipState extends State<_PaymentMethodChip> {
   bool _hovered = false;
-  IconData get _icon { switch (widget.forma.tipo) { case 'dinheiro': return Icons.payments_rounded; case 'cartao_debito': return Icons.credit_card_rounded; case 'cartao_credito': return Icons.credit_score_rounded; case 'pix': return Icons.qr_code_2_rounded; default: return Icons.account_balance_wallet_rounded; } }
-  Color get _color { switch (widget.forma.tipo) { case 'dinheiro': return AppTheme.accentGreen; case 'cartao_debito': return AppTheme.accentBlue; case 'cartao_credito': return AppTheme.accentOrange; case 'pix': return AppTheme.primaryColor; default: return AppTheme.onSurfaceVariant; } }
+  IconData get _icon { switch (widget.forma.tipo) { case 'dinheiro': return Icons.payments_rounded; case 'cartao_debito': return Icons.credit_card_rounded; case 'cartao_credito': return Icons.credit_score_rounded; case 'pix': return Icons.qr_code_2_rounded; case 'crediario': return Icons.person_pin_rounded; default: return Icons.account_balance_wallet_rounded; } }
+  Color get _color { switch (widget.forma.tipo) { case 'dinheiro': return AppTheme.accentGreen; case 'cartao_debito': return AppTheme.accentBlue; case 'cartao_credito': return AppTheme.accentOrange; case 'pix': return AppTheme.primaryColor; case 'crediario': return AppTheme.accentPurple; default: return AppTheme.onSurfaceVariant; } }
 
   @override
   Widget build(BuildContext context) {
@@ -332,6 +413,7 @@ class _PaymentEntry {
   final int formaPagamentoId; 
   final String nome; 
   final double valor; 
+  final String tipo;
   final String? transactionId;
-  _PaymentEntry({required this.formaPagamentoId, required this.nome, required this.valor, this.transactionId}); 
+  _PaymentEntry({required this.formaPagamentoId, required this.nome, required this.valor, required this.tipo, this.transactionId}); 
 }

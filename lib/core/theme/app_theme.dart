@@ -14,6 +14,7 @@ class AppTheme {
   static const Color accentRedDark = Color(0xFFFF3B3B);
   static const Color accentOrange = Color(0xFFFFB74D);
   static const Color accentBlue = Color(0xFF4FC3F7);
+  static const Color accentPurple = Color(0xFF9C27B0);
 
   // ─── Surface Colors ─────────────────────────────────────────
   static const Color background = Color(0xFF0B0E1A);

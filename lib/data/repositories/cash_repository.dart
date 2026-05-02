@@ -1,6 +1,7 @@
 import 'package:unifytechxenoscaixa/core/constants/api_endpoints.dart';
 import 'package:unifytechxenoscaixa/data/services/api_service.dart';
 import 'package:unifytechxenoscaixa/domain/models/cash_session.dart';
+import 'package:unifytechxenoscaixa/domain/models/payment_method.dart';
 
 class CashRepository {
   final ApiService _api;
@@ -49,6 +50,24 @@ class CashRepository {
       return [];
     } catch (e) {
       print('Erro ao carregar caixas físicos: $e');
+      return [];
+    }
+  }
+
+  Future<List<PaymentMethod>> listPaymentMethods() async {
+    try {
+      final response = await _api.get(ApiEndpoints.caixaFormasPagamento);
+      if (!response.isSuccess) return [];
+      
+      final data = response.data['data'];
+      if (data is List) {
+        return data.map<PaymentMethod>((e) {
+          return PaymentMethod.fromJson(Map<String, dynamic>.from(e));
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Erro ao carregar formas de pagamento: $e');
       return [];
     }
   }

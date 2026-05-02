@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:unifytechxenoscaixa/data/repositories/cash_repository.dart';
 import 'package:unifytechxenoscaixa/domain/models/cash_session.dart';
+import 'package:unifytechxenoscaixa/domain/models/payment_method.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/service_providers.dart';
 
 part 'cash_provider.g.dart';
@@ -9,6 +10,7 @@ part 'cash_provider.g.dart';
 class CashState {
   final CashSession? sessao;
   final List<PhysicalCashRegister> physicalRegisters;
+  final List<PaymentMethod> paymentMethods;
   final bool sessaoAtiva;
   final bool isLoading;
   final String? error;
@@ -16,6 +18,7 @@ class CashState {
   const CashState({
     this.sessao,
     this.physicalRegisters = const [],
+    this.paymentMethods = const [],
     this.sessaoAtiva = false,
     this.isLoading = false,
     this.error,
@@ -24,6 +27,7 @@ class CashState {
   CashState copyWith({
     CashSession? sessao,
     List<PhysicalCashRegister>? physicalRegisters,
+    List<PaymentMethod>? paymentMethods,
     bool? sessaoAtiva,
     bool? isLoading,
     String? error,
@@ -33,6 +37,7 @@ class CashState {
     return CashState(
       sessao: clearSessao ? null : (sessao ?? this.sessao),
       physicalRegisters: physicalRegisters ?? this.physicalRegisters,
+      paymentMethods: paymentMethods ?? this.paymentMethods,
       sessaoAtiva: sessaoAtiva ?? this.sessaoAtiva,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
@@ -55,11 +60,13 @@ class CashNotifier extends _$CashNotifier {
     try {
       final status = await _cashRepo.status();
       final physicals = await _cashRepo.listPhysicalRegisters();
+      final methods = await _cashRepo.listPaymentMethods();
       
       state = state.copyWith(
         sessaoAtiva: status.sessaoAtiva,
         sessao: status.sessao,
         physicalRegisters: physicals.isNotEmpty ? physicals : state.physicalRegisters,
+        paymentMethods: methods.isNotEmpty ? methods : state.paymentMethods,
         isLoading: false,
       );
     } catch (e) {

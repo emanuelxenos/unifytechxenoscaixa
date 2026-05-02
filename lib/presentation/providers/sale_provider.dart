@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:unifytechxenoscaixa/data/repositories/sale_repository.dart';
+import 'package:unifytechxenoscaixa/domain/models/cliente.dart';
 import 'package:unifytechxenoscaixa/domain/models/product.dart';
 import 'package:unifytechxenoscaixa/domain/models/sale.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/service_providers.dart';
@@ -13,6 +14,7 @@ class SaleState {
   final bool isLoading;
   final String? error;
   final SaleResponse? lastSaleResponse;
+  final Cliente? selectedCustomer;
 
   const SaleState({
     this.cart = const [],
@@ -20,6 +22,7 @@ class SaleState {
     this.isLoading = false,
     this.error,
     this.lastSaleResponse,
+    this.selectedCustomer,
   });
 
   int get itemCount => cart.length;
@@ -35,8 +38,10 @@ class SaleState {
     bool? isLoading,
     String? error,
     SaleResponse? lastSaleResponse,
+    Cliente? selectedCustomer,
     bool clearError = false,
     bool clearResponse = false,
+    bool removeCustomer = false,
   }) {
     return SaleState(
       cart: cart ?? this.cart,
@@ -44,6 +49,7 @@ class SaleState {
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
       lastSaleResponse: clearResponse ? null : (lastSaleResponse ?? this.lastSaleResponse),
+      selectedCustomer: removeCustomer ? null : (selectedCustomer ?? this.selectedCustomer),
     );
   }
 }
@@ -106,6 +112,16 @@ class SaleNotifier extends _$SaleNotifier {
   /// Aplica desconto total na venda
   void applyTotalDiscount(double discount) {
     state = state.copyWith(totalDiscount: discount);
+  }
+
+  /// Seleciona um cliente para a venda
+  void selectCustomer(Cliente cliente) {
+    state = state.copyWith(selectedCustomer: cliente);
+  }
+
+  /// Remove o cliente da venda
+  void removeCustomer() {
+    state = state.copyWith(removeCustomer: true);
   }
 
   /// Finaliza a venda enviando ao servidor
