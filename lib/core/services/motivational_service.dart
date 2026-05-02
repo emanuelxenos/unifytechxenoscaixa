@@ -157,8 +157,14 @@ class MotivationalService {
   Future<void> speakMotivational(String nomeOperador) async {
     try {
       final fraseBase = _frases[_random.nextInt(_frases.length)];
-      final fraseFinal = fraseBase.replaceAll("{nome}", nomeOperador);
-      final mensagem = "$fraseFinal. Sabe que eu te amo, né?";
+      
+      // Garante que o nome do operador seja usado na frase sorteada
+      String mensagem = fraseBase.replaceAll("{nome}", nomeOperador);
+      
+      // Sorteio para o "Te amo" (Chance de 20%)
+      if (_random.nextInt(100) < 20) {
+        mensagem += ". Sabe que eu te amo, né?";
+      }
 
       final encodedMsg = Uri.encodeComponent(mensagem);
       
