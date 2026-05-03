@@ -153,8 +153,21 @@ class PhysicalCashRegister {
   final String codigo;
   final String nome;
   final bool ativo;
+  final String? impressoraModelo;
+  final String? impressoraPorta;
+  final String? balancaModelo;
+  final String? balancaPorta;
 
-  PhysicalCashRegister({required this.id, required this.codigo, required this.nome, this.ativo = true});
+  PhysicalCashRegister({
+    required this.id,
+    required this.codigo,
+    required this.nome,
+    this.ativo = true,
+    this.impressoraModelo,
+    this.impressoraPorta,
+    this.balancaModelo,
+    this.balancaPorta,
+  });
 
   factory PhysicalCashRegister.fromJson(Map<String, dynamic> json) {
     return PhysicalCashRegister(
@@ -162,6 +175,10 @@ class PhysicalCashRegister {
       codigo: json['codigo'] ?? '',
       nome: json['nome'] ?? '',
       ativo: json['ativo'] ?? true,
+      impressoraModelo: json['impressora_modelo'],
+      impressoraPorta: json['impressora_porta'],
+      balancaModelo: json['balanca_modelo'],
+      balancaPorta: json['balanca_porta'],
     );
   }
 }

@@ -41,7 +41,7 @@ class CashRepository {
       final response = await _api.get(ApiEndpoints.caixaFisicos);
       if (!response.isSuccess) return [];
       
-      final data = response.data;
+      final data = response.data['data'];
       if (data is List) {
         return data.map<PhysicalCashRegister>((e) {
           return PhysicalCashRegister.fromJson(Map<String, dynamic>.from(e));

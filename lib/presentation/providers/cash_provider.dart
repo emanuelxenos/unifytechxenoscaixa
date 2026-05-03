@@ -87,6 +87,21 @@ class CashNotifier extends _$CashNotifier {
         observacao: observacao,
       );
       await _cashRepo.abrir(request);
+      
+      // Sincronizar Hardware do Terminal Selecionado
+      try {
+        final terminal = state.physicalRegisters.firstWhere((c) => c.id == caixaFisicoId);
+        final configService = ref.read(configServiceProvider);
+        await configService.saveHardwareConfig(
+          impressoraModelo: terminal.impressoraModelo,
+          impressoraPorta: terminal.impressoraPorta,
+          balancaModelo: terminal.balancaModelo,
+          balancaPorta: terminal.balancaPorta,
+        );
+      } catch (_) {
+        // Se não encontrar o terminal na lista, ignora o sync de hardware
+      }
+
       await checkStatus();
       return true;
     } catch (e) {

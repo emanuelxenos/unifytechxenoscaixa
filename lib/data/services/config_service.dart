@@ -89,6 +89,30 @@ class ConfigService {
     await p.setString('payment_settings', json);
   }
 
+  // ─── Hardware Config (Sync from Terminal) ──────────────────
+  Future<void> saveHardwareConfig({
+    String? impressoraModelo,
+    String? impressoraPorta,
+    String? balancaModelo,
+    String? balancaPorta,
+  }) async {
+    final p = await prefs;
+    if (impressoraModelo != null) await p.setString('hw_impressora_modelo', impressoraModelo);
+    if (impressoraPorta != null) await p.setString('hw_impressora_porta', impressoraPorta);
+    if (balancaModelo != null) await p.setString('hw_balanca_modelo', balancaModelo);
+    if (balancaPorta != null) await p.setString('hw_balanca_porta', balancaPorta);
+  }
+
+  Future<Map<String, String?>> getHardwareConfig() async {
+    final p = await prefs;
+    return {
+      'impressora_modelo': p.getString('hw_impressora_modelo'),
+      'impressora_porta': p.getString('hw_impressora_porta'),
+      'balanca_modelo': p.getString('hw_balanca_modelo'),
+      'balanca_porta': p.getString('hw_balanca_porta'),
+    };
+  }
+
   // ─── Full Clear ─────────────────────────────────────────────
   Future<void> clearAll() async {
     await clearAuthToken();
