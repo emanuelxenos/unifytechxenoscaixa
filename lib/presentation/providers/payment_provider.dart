@@ -5,6 +5,7 @@ import 'package:unifytechxenoscaixa/core/services/payment/providers/mock_payment
 import 'package:unifytechxenoscaixa/core/services/payment/payment_settings.dart';
 import 'package:unifytechxenoscaixa/core/services/payment/providers/mercado_pago_provider.dart';
 import 'package:unifytechxenoscaixa/core/services/payment/providers/stone_provider.dart';
+import 'package:unifytechxenoscaixa/core/services/payment/providers/tef_provider.dart';
 import 'package:unifytechxenoscaixa/data/services/config_service.dart';
 
 part 'payment_provider.g.dart';
@@ -70,6 +71,11 @@ class PaymentNotifier extends _$PaymentNotifier {
         return StoneProvider(
           bridgeIp: s.config['ip'] ?? 'localhost',
         );
+      case PaymentProviderType.tef:
+        return TefProvider(
+          host: s.host,
+          port: s.port,
+        );
       default:
         return MockPaymentProvider();
     }
@@ -80,11 +86,11 @@ class PaymentNotifier extends _$PaymentNotifier {
     await _configService.savePaymentSettings(jsonEncode(newSettings.toJson()));
   }
 
-  Future<PaymentResponse> pay(double amount) async {
+  Future<PaymentResponse> pay(double amount, PaymentMode mode) async {
     state = state.copyWith(status: PaymentStatus.processing, message: 'Aguardando maquininha...');
     
     try {
-      final response = await _activeProvider.processPayment(amount);
+      final response = await _activeProvider.processPayment(amount, mode);
       
       if (response.success) {
         state = state.copyWith(

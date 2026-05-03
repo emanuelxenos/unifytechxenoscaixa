@@ -33,6 +33,9 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
       _controllers['deviceId'] = TextEditingController(text: config['deviceId']);
     } else if (_selectedType == PaymentProviderType.stone) {
       _controllers['ip'] = TextEditingController(text: config['ip'] ?? 'localhost');
+    } else if (_selectedType == PaymentProviderType.tef) {
+      _controllers['host'] = TextEditingController(text: config['host'] ?? 'localhost');
+      _controllers['port'] = TextEditingController(text: config['port'] ?? '8080');
     }
   }
 
@@ -103,6 +106,12 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
                   isSelected: _selectedType == PaymentProviderType.stone,
                   onTap: () => setState(() { _selectedType = PaymentProviderType.stone; _initControllers({}); }),
                 ),
+                _ProviderCard(
+                  label: 'TEF (USB)',
+                  icon: Icons.usb_rounded,
+                  isSelected: _selectedType == PaymentProviderType.tef,
+                  onTap: () => setState(() { _selectedType = PaymentProviderType.tef; _initControllers({}); }),
+                ),
               ],
             ),
             
@@ -141,6 +150,12 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
     } else if (_selectedType == PaymentProviderType.stone) {
       return [
         _buildTextField('ip', 'IP da Máquina/Bridge (ex: localhost)'),
+      ];
+    } else if (_selectedType == PaymentProviderType.tef) {
+      return [
+        _buildTextField('host', 'IP do Client TEF (ex: localhost)'),
+        const SizedBox(height: 16),
+        _buildTextField('port', 'Porta do Client TEF (ex: 8080)'),
       ];
     }
     return [];

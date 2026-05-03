@@ -1,18 +1,27 @@
-enum PaymentProviderType { mock, mercadoPago, stone, pagSeguro }
+enum PaymentProviderType { mock, mercadoPago, stone, pagSeguro, tef }
 
 class PaymentSettings {
   final PaymentProviderType type;
-  final Map<String, String> config; // Guarda Token, DeviceID, IP, etc.
+  final Map<String, String> config; // Guarda Token, DeviceID, IP, Porta, etc.
 
   PaymentSettings({
     required this.type,
     this.config = const {},
   });
 
+  // Getters facilitadores
+  String get host => config['host'] ?? 'localhost';
+  String get port => config['port'] ?? '8080';
+  String get storeId => config['storeId'] ?? '';
+  String get terminalId => config['terminalId'] ?? '';
+
   // Valores padrão
   factory PaymentSettings.defaultConfig() => PaymentSettings(
     type: PaymentProviderType.mock,
-    config: {},
+    config: {
+      'host': 'localhost',
+      'port': '8080',
+    },
   );
 
   Map<String, dynamic> toJson() => {

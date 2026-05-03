@@ -102,6 +102,12 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final tipo = forma.tipo.toLowerCase();
     if (tipo == 'crediario' || tipo == 'pix' || tipo == 'cartao_debito' || tipo == 'cartao_credito') {
       if (valorRestante > 0) {
+        // Se for PIX ou Cartão, tenta o fluxo integrado se configurado
+        if (tipo == 'pix' || tipo == 'cartao_debito' || tipo == 'cartao_credito') {
+          _processIntegratedPayment(forma, valorRestante);
+          return;
+        }
+
         setState(() => _selectedFormaId = null); // Limpa para o campo sumir na hora
         _addPayment(id: id, forcedValor: valorRestante);
         return; 
@@ -143,9 +149,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       }
     }
 
-    // Se for cartão, tentamos o fluxo integrado
-    if (forma.tipo == 'cartao_debito' || forma.tipo == 'cartao_credito') {
-      _processCardPayment(forma, valor);
+    // Se for cartão ou PIX, tentamos o fluxo integrado
+    if (forma.tipo == 'cartao_debito' || forma.tipo == 'cartao_credito' || forma.tipo == 'pix') {
+      _processIntegratedPayment(forma, valor);
     } else {
       setState(() { 
         _pagamentos.add(_PaymentEntry(formaPagamentoId: forma.id, nome: forma.nome, valor: valor, tipo: forma.tipo)); 
@@ -154,26 +160,38 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     }
   }
 
-  Future<void> _processCardPayment(PaymentMethod forma, double valor) async {
+  Future<void> _processIntegratedPayment(PaymentMethod forma, double valor) async {
     final paymentNotifier = ref.read(paymentNotifierProvider.notifier);
     
-    // Inicia o pagamento na maquininha (Mock por enquanto)
-    final response = await paymentNotifier.pay(valor);
+    // Mapeia o tipo da forma para o PaymentMode do provedor
+    PaymentMode mode = PaymentMode.credito;
+    if (forma.tipo == 'cartao_debito') mode = PaymentMode.debito;
+    if (forma.tipo == 'pix') mode = PaymentMode.pix;
+
+    // Inicia o pagamento na maquininha
+    final response = await paymentNotifier.pay(valor, mode);
 
     if (response.success) {
       setState(() {
         _pagamentos.add(_PaymentEntry(
           formaPagamentoId: forma.id, 
-          nome: '${forma.nome} (${response.cardBrand})', 
+          nome: '${forma.nome} ${response.cardBrand != null ? "(${response.cardBrand})" : ""}', 
           valor: valor,
           tipo: forma.tipo,
           transactionId: response.transactionId,
         ));
         _selectedFormaId = null;
       });
-      if (mounted) AppSnackbar.success(context, 'Cartão aprovado!');
+      if (mounted) {
+        AppSnackbar.success(context, '${forma.nome} aprovado!');
+        
+        // Se o valor total foi atingido, finaliza a venda automaticamente
+        if (_restante <= 0.01) {
+          _confirm();
+        }
+      }
     } else {
-      if (mounted) AppSnackbar.error(context, response.message ?? 'Falha no cartão');
+      if (mounted) AppSnackbar.error(context, response.message ?? 'Falha no ${forma.nome}');
     }
     
     paymentNotifier.reset();

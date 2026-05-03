@@ -12,9 +12,14 @@ class MercadoPagoProvider implements CardPaymentProvider {
   String get name => "Mercado Pago Point";
 
   @override
-  Future<PaymentResponse> processPayment(double amount) async {
+  Future<PaymentResponse> processPayment(double amount, PaymentMode mode) async {
     final url = Uri.parse('https://api.mercadopago.com/point/integration-api/devices/$deviceId/payment-intents');
     
+    // Mapeia o modo para o que o Mercado Pago espera
+    String mpMode = 'credit_card';
+    if (mode == PaymentMode.debito) mpMode = 'debit_card';
+    if (mode == PaymentMode.pix) mpMode = 'pix';
+
     try {
       final response = await http.post(
         url,
@@ -23,9 +28,10 @@ class MercadoPagoProvider implements CardPaymentProvider {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'amount': (amount * 100).toInt(), // MP usa centavos
+          'amount': (amount * 100).toInt(),
           'description': 'Venda UnifyTech Xenos',
           'payment_mode': 'local_res',
+          'payment_method_id': mpMode,
         }),
       );
 

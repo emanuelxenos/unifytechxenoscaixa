@@ -6,7 +6,7 @@ class MockPaymentProvider implements CardPaymentProvider {
   String get name => "Simulador de Teste";
 
   @override
-  Future<PaymentResponse> processPayment(double amount) async {
+  Future<PaymentResponse> processPayment(double amount, PaymentMode mode) async {
     // Simula o tempo de processamento da maquininha
     await Future.delayed(const Duration(seconds: 3));
     
@@ -17,7 +17,7 @@ class MockPaymentProvider implements CardPaymentProvider {
       return PaymentResponse(
         success: true,
         transactionId: "MOCK-${DateTime.now().millisecondsSinceEpoch}",
-        message: "PAGAMENTO APROVADO",
+        message: "PAGAMENTO ${mode.name.toUpperCase()} APROVADO",
         cardBrand: "MASTERCARD",
         lastDigits: "4455",
       );

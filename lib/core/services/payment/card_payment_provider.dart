@@ -1,10 +1,12 @@
 enum PaymentStatus { idle, processing, approved, rejected, error }
 
+enum PaymentMode { credito, debito, pix, voucher }
+
 abstract class CardPaymentProvider {
   String get name;
   
   /// Inicia o processo de pagamento
-  Future<PaymentResponse> processPayment(double amount);
+  Future<PaymentResponse> processPayment(double amount, PaymentMode mode);
   
   /// Cancela uma transação específica
   Future<bool> cancelTransaction(String transactionId);
