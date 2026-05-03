@@ -12,6 +12,7 @@ import 'package:unifytechxenoscaixa/presentation/widgets/glass_button.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/payment_provider.dart';
 import 'package:unifytechxenoscaixa/core/services/payment/card_payment_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/customer_search_dialog.dart';
+import 'package:unifytechxenoscaixa/core/services/print_service.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key});
@@ -25,6 +26,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   final List<_PaymentEntry> _pagamentos = [];
   int? _selectedFormaId;
   double _valorTotal = 0;
+  bool _hasPrinted = false;
 
   final _valorFocus = FocusNode();
 
@@ -236,6 +238,17 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     // Escuta sucesso
     ref.listen(saleNotifierProvider, (prev, next) {
       if (next.lastSaleResponse != null && next.lastSaleResponse != prev?.lastSaleResponse) {
+        // Dispara impressão automática (apenas uma vez)
+        if (!_hasPrinted) {
+          _hasPrinted = true;
+          final comprovante = next.lastSaleResponse?.comprovante;
+          if (comprovante != null) {
+            ref.read(printServiceProvider).printReceipt(comprovante);
+          }
+          // Limpa o carrinho e a resposta IMEDIATAMENTE para evitar re-trigger
+          Future.microtask(() => ref.read(saleNotifierProvider.notifier).clearCart());
+        }
+
         Navigator.of(context).pop();
         AppSnackbar.success(context, 'Venda #${next.lastSaleResponse?.numeroVenda} finalizada!');
       }

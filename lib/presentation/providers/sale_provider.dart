@@ -52,6 +52,25 @@ class SaleState {
       selectedCustomer: removeCustomer ? null : (selectedCustomer ?? this.selectedCustomer),
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SaleState &&
+          runtimeType == other.runtimeType &&
+          isLoading == other.isLoading &&
+          error == other.error &&
+          lastSaleResponse == other.lastSaleResponse &&
+          selectedCustomer == other.selectedCustomer &&
+          cart.length == other.cart.length;
+
+  @override
+  int get hashCode =>
+      isLoading.hashCode ^
+      error.hashCode ^
+      lastSaleResponse.hashCode ^
+      selectedCustomer.hashCode ^
+      cart.length.hashCode;
 }
 
 @Riverpod(keepAlive: true)

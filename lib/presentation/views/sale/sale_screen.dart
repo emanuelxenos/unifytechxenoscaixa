@@ -154,12 +154,17 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
       AppSnackbar.warning(context, 'Adicione produtos ao carrinho');
       return;
     }
+    
+    setState(() => _paymentDialogOpen = true);
+    
     showDialog(
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black.withOpacity(0.7),
       builder: (_) => const PaymentScreen(),
-    );
+    ).then((_) {
+      if (mounted) setState(() => _paymentDialogOpen = false);
+    });
   }
 
   Future<void> _cancelSale() async {

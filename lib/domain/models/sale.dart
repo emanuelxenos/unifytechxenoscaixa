@@ -179,8 +179,15 @@ class SaleResponse {
   final String numeroVenda;
   final double valorTotal;
   final double valorTroco;
+  final String? comprovante;
 
-  SaleResponse({required this.idVenda, required this.numeroVenda, required this.valorTotal, this.valorTroco = 0});
+  SaleResponse({
+    required this.idVenda,
+    required this.numeroVenda,
+    required this.valorTotal,
+    this.valorTroco = 0,
+    this.comprovante,
+  });
 
   factory SaleResponse.fromJson(Map<String, dynamic> json) {
     return SaleResponse(
@@ -188,8 +195,20 @@ class SaleResponse {
       numeroVenda: json['numero_venda'] ?? '',
       valorTotal: (json['valor_total'] ?? 0).toDouble(),
       valorTroco: (json['valor_troco'] ?? 0).toDouble(),
+      comprovante: json['comprovante'],
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SaleResponse &&
+          runtimeType == other.runtimeType &&
+          idVenda == other.idVenda &&
+          numeroVenda == other.numeroVenda;
+
+  @override
+  int get hashCode => idVenda.hashCode ^ numeroVenda.hashCode;
 }
 
 // ─── Cart Item (local) ────────────────────────────────────────
