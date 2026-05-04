@@ -21,6 +21,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _terminalController = TextEditingController();
   bool _testing = false;
   bool? _testResult;
+  bool _voiceEnabled = true;
 
   @override
   void initState() { super.initState(); _loadConfig(); }
@@ -30,6 +31,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _hostController.text = await config.getServerHost();
     _portController.text = (await config.getServerPort()).toString();
     _terminalController.text = await config.getTerminalId();
+    _voiceEnabled = await config.isVoiceEnabled();
     setState(() {});
   }
 
@@ -48,6 +50,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await authNotifier.updateServerConfig(_hostController.text.trim(), int.tryParse(_portController.text.trim()) ?? 8080);
     final config = ConfigService();
     await config.saveTerminalId(_terminalController.text.trim());
+    await config.setVoiceEnabled(_voiceEnabled);
     if (!mounted) return;
     AppSnackbar.success(context, 'Configurações salvas!');
   }
@@ -113,6 +116,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const _InfoRow('Aplicação', AppConstants.appName),
                   const _InfoRow('Versão', AppConstants.appVersion),
                   const _InfoRow('Plataforma', 'Windows Desktop'),
+                ])),
+                const SizedBox(height: 16),
+                // --- NOVA SEÇÃO DE RECURSOS IA ---
+                GlassCard(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [const Icon(Icons.psychology_rounded, color: AppTheme.accentBlue, size: 20), const SizedBox(width: 10), const Text('Recursos de IA', style: TextStyle(color: AppTheme.onBackground, fontSize: 16, fontWeight: FontWeight.w600))]),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Frases Motivacionais', style: TextStyle(color: AppTheme.onSurface, fontSize: 14, fontWeight: FontWeight.w500)),
+                            Text('Habilita a voz da IA no login e vendas.', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _voiceEnabled,
+                        onChanged: (val) => setState(() => _voiceEnabled = val),
+                        activeColor: AppTheme.accentBlue,
+                        activeTrackColor: AppTheme.accentBlue.withOpacity(0.3),
+                      ),
+                    ],
+                  ),
                 ])),
                 const SizedBox(height: 24),
                 GlassButton.primary(label: 'Salvar Configurações', icon: Icons.save_rounded, onPressed: _save, expanded: true, height: 52),

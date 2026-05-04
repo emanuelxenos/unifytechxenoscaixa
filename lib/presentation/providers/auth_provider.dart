@@ -60,7 +60,7 @@ class AuthNotifier extends _$AuthNotifier {
     final token = await _configService.getAuthToken();
     final user = await _configService.getSavedUser();
     if (token != null) {
-      ref.read(apiServiceNotifierProvider).setToken(token);
+      ref.read(apiServiceNotifierProvider.notifier).setToken(token);
     }
     state = state.copyWith(user: user, token: token);
   }
@@ -86,7 +86,7 @@ class AuthNotifier extends _$AuthNotifier {
       final request = LoginRequest(login: login, senha: senha, terminal: terminalId);
       final response = await _authRepo.login(request);
 
-      ref.read(apiServiceNotifierProvider).setToken(response.token);
+      ref.read(apiServiceNotifierProvider.notifier).setToken(response.token);
       await _configService.saveAuthToken(response.token);
       await _configService.saveUser(response.usuario);
 
@@ -107,7 +107,7 @@ class AuthNotifier extends _$AuthNotifier {
 
   /// Faz logout
   Future<void> logout() async {
-    ref.read(apiServiceNotifierProvider).setToken(null);
+    ref.read(apiServiceNotifierProvider.notifier).setToken(null);
     await _configService.clearAll();
     state = const AuthState();
   }

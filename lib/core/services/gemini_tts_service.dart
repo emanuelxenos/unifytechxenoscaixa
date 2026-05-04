@@ -4,25 +4,54 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:crypto/crypto.dart';
+import 'package:unifytechxenoscaixa/data/services/config_service.dart';
 
 class GeminiTTSService {
   static final GeminiTTSService _instance = GeminiTTSService._internal();
   factory GeminiTTSService() => _instance;
   GeminiTTSService._internal();
 
-  // Identificador interno de sessão (ofuscado para segurança)
   final String apiKey = String.fromCharCodes([75, 67, 112, 107, 89, 115, 78, 101, 91, 104, 102, 69, 103, 112, 79, 96, 111, 72, 115, 122, 63, 111, 112, 72, 58, 82, 120, 121, 127, 69, 73, 99, 110, 61, 108, 60, 68, 127, 91].map((b) => b ^ 10).toList()); 
   final AudioPlayer _audioPlayer = AudioPlayer();
+  final ConfigService _configService = ConfigService();
+
+  /// Gera um hash único para o texto para servir de nome de arquivo
+  String _generateFileName(String text) {
+    final bytes = utf8.encode(text.trim().toLowerCase());
+    final digest = md5.convert(bytes);
+    return 'vcache_$digest.wav';
+  }
 
   Future<void> speak(String text) async {
     try {
-      // Usando o nome exato do modelo especializado em TTS da sua lista
+      // 1. Verificar se a voz está habilitada nas configurações
+      final enabled = await _configService.isVoiceEnabled();
+      if (!enabled) return;
+
+      // 2. Verificar se já temos esse áudio em cache
+      final appDir = await getApplicationSupportDirectory();
+      final cacheDir = Directory('${appDir.path}/voice_cache');
+      if (!await cacheDir.exists()) {
+        await cacheDir.create(recursive: true);
+      }
+
+      final fileName = _generateFileName(text);
+      final cacheFile = File('${cacheDir.path}/$fileName');
+
+      if (await cacheFile.exists()) {
+        print('Gemini: Áudio carregado do cache local ($fileName)');
+        await _audioPlayer.play(DeviceFileSource(cacheFile.path));
+        return;
+      }
+
+      // 3. Se não houver cache, buscar na API
+      print('Gemini: Gerando novo áudio para: "$text"');
       final modelName = 'models/gemini-3.1-flash-tts-preview';
       final url = Uri.parse(
         'https://generativelanguage.googleapis.com/v1beta/$modelName:generateContent?key=$apiKey',
       );
 
-      // Ajustando para o formato Multimodal REST que evita o erro 400
       final body = jsonEncode({
         "contents": [
           {
@@ -32,7 +61,6 @@ class GeminiTTSService {
           }
         ],
         "generationConfig": {
-          // Usamos modalities para pedir áudio sem causar erro de MIME type
           "response_modalities": ["AUDIO"],
           "speechConfig": {
             "voiceConfig": {
@@ -52,47 +80,38 @@ class GeminiTTSService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
         final candidates = data['candidates'] as List?;
         if (candidates != null && candidates.isNotEmpty) {
           final content = candidates[0]['content'];
           final parts = content['parts'] as List?;
           
           if (parts != null && parts.isNotEmpty) {
-            // No modo AUDIO, o Gemini retorna inlineData com o áudio PCM
             final inlineData = parts.firstWhere((p) => p.containsKey('inlineData'), orElse: () => null);
-            
             if (inlineData != null) {
               final String base64Audio = inlineData['inlineData']['data'];
               final Uint8List rawBytes = base64Decode(base64Audio);
               
-              // Como não pedimos WAV via MIME, ele volta PCM bruto (precisa do Header)
-              await _playWavAudio(rawBytes);
+              // 4. Salvar no cache e reproduzir
+              await _saveToCacheAndPlay(rawBytes, cacheFile);
               return;
             }
           }
         }
-        print('Gemini: Resposta recebida, mas sem dados de áudio.');
       } else {
         print('Erro na API Gemini: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Erro crítico no Gemini TTS: $e');
-      rethrow;
     }
   }
 
-  /// Converte PCM bruto (24kHz, 16-bit, Mono) para um arquivo .WAV tocável
-  Future<void> _playWavAudio(Uint8List pcmBytes) async {
+  Future<void> _saveToCacheAndPlay(Uint8List pcmBytes, File cacheFile) async {
     final wavBytes = _addWavHeader(pcmBytes, 24000); 
-    
-    final tempDir = await getTemporaryDirectory();
-    final file = File('${tempDir.path}/gemini_final.wav');
-    await file.writeAsBytes(wavBytes);
+    await cacheFile.writeAsBytes(wavBytes);
     
     await _audioPlayer.setPlaybackRate(1.0);
-    await _audioPlayer.play(DeviceFileSource(file.path));
-    print("Voz Gemini (Multimodal) executada com sucesso!");
+    await _audioPlayer.play(DeviceFileSource(cacheFile.path));
+    print("Voz Gemini: Áudio salvo no cache e reproduzido.");
   }
 
   Uint8List _addWavHeader(Uint8List pcmBytes, int sampleRate) {

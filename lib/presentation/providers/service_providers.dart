@@ -13,9 +13,13 @@ ConfigService configService(ConfigServiceRef ref) {
 /// Provider singleton para ApiService (Notifier)
 @Riverpod(keepAlive: true)
 class ApiServiceNotifier extends _$ApiServiceNotifier {
+  String? _currentToken;
+
   @override
   ApiService build() {
-    return ApiService(host: '192.168.1.100', port: 8080);
+    final api = ApiService(host: '192.168.1.100', port: 8080);
+    if (_currentToken != null) api.setToken(_currentToken);
+    return api;
   }
 
   /// Inicializa ApiService a partir das configurações salvas
@@ -23,10 +27,24 @@ class ApiServiceNotifier extends _$ApiServiceNotifier {
     final config = ref.read(configServiceProvider);
     final host = await config.getServerHost();
     final port = await config.getServerPort();
-    state = ApiService(host: host, port: port);
+    final token = await config.getAuthToken();
+    
+    _currentToken = token;
+    final api = ApiService(host: host, port: port);
+    if (token != null) api.setToken(token);
+    state = api;
   }
 
   void updateBaseUrl(String host, int port) {
-    state = ApiService(host: host, port: port);
+    final api = ApiService(host: host, port: port);
+    if (_currentToken != null) api.setToken(_currentToken);
+    state = api;
+  }
+
+  void setToken(String? token) {
+    _currentToken = token;
+    state.setToken(token);
+    // Disparamos uma atualização de estado para garantir que quem usa o provider veja a mudança
+    state = state; 
   }
 }

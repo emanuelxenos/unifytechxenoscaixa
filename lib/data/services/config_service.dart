@@ -113,6 +113,17 @@ class ConfigService {
     };
   }
 
+  // ─── Voice Config ───────────────────────────────────────────
+  Future<bool> isVoiceEnabled() async {
+    final p = await prefs;
+    return p.getBool('config_voice_enabled') ?? true;
+  }
+
+  Future<void> setVoiceEnabled(bool enabled) async {
+    final p = await prefs;
+    await p.setBool('config_voice_enabled', enabled);
+  }
+
   // ─── Full Clear ─────────────────────────────────────────────
   Future<void> clearAll() async {
     await clearAuthToken();
