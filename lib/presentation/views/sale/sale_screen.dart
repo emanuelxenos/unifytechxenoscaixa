@@ -25,6 +25,7 @@ import 'package:unifytechxenoscaixa/presentation/views/sale/widgets/customer_sel
 import 'package:unifytechxenoscaixa/presentation/views/sale/widgets/product_display_card.dart';
 import 'package:unifytechxenoscaixa/presentation/views/sale/widgets/summary_row.dart';
 import 'package:unifytechxenoscaixa/presentation/views/sale/widgets/sale_menu_item.dart';
+import 'package:unifytechxenoscaixa/presentation/providers/pending_sale_provider.dart';
 
 class SaleScreen extends ConsumerStatefulWidget {
   const SaleScreen({super.key});
@@ -87,6 +88,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     if (key == LogicalKeyboardKey.f8) { _closeCash(); return true; }
     if (key == LogicalKeyboardKey.f9) { Navigator.of(context).pushNamed('/settings'); return true; }
     if (key == LogicalKeyboardKey.f10) { CustomerSearchDialog.show(context); return true; }
+    if (key == LogicalKeyboardKey.f11) { _handlePauseResume(); return true; }
     if (key == LogicalKeyboardKey.delete) { _showRemoveItemDialog(); return true; }
     if (key == LogicalKeyboardKey.escape) {
       if (_searchController.text.isNotEmpty) {
@@ -190,6 +192,98 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
 
   void _closeCash() => Navigator.of(context).pushReplacementNamed('/close-cash');
 
+  void _handlePauseResume() {
+    final saleState = ref.read(saleNotifierProvider);
+    if (saleState.cart.isNotEmpty) {
+      _pauseSale();
+    } else {
+      _showPendingSales();
+    }
+  }
+
+  Future<void> _pauseSale() async {
+    final saleState = ref.read(saleNotifierProvider);
+    if (saleState.cart.isEmpty) return;
+
+    final confirmed = await ConfirmationDialog.show(context,
+      title: 'Pausar Venda',
+      message: 'Deseja colocar esta venda em espera?',
+      confirmLabel: 'Pausar Venda',
+    );
+
+    if (confirmed) {
+      ref.read(pendingSalesProvider.notifier).addSale(
+        saleState.cart,
+        saleState.selectedCustomer,
+      );
+      ref.read(saleNotifierProvider.notifier).clearCart();
+      if (mounted) AppSnackbar.success(context, 'Venda colocada em espera (F11 para retomar)');
+      _searchFocus.requestFocus();
+    }
+  }
+
+  void _showPendingSales() {
+    final pendingSales = ref.read(pendingSalesProvider);
+    if (pendingSales.isEmpty) {
+      AppSnackbar.warning(context, 'Não há vendas em espera');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 500, decoration: AppTheme.glassCard(), padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.pause_circle_filled_rounded, color: AppTheme.accentOrange, size: 48),
+              const SizedBox(height: 16),
+              const Text('Vendas em Espera', style: TextStyle(color: AppTheme.onBackground, fontSize: 22, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              const Text('Selecione uma venda para retomar', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 14)),
+              const SizedBox(height: 24),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: pendingSales.length,
+                  separatorBuilder: (_, __) => const Divider(color: AppTheme.divider, height: 1),
+                  itemBuilder: (_, i) {
+                    final sale = pendingSales[i];
+                    final total = sale.items.fold(0.0, (sum, item) => sum + item.subtotal);
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      title: Text(sale.id, style: const TextStyle(color: AppTheme.onBackground, fontWeight: FontWeight.w600)),
+                      subtitle: Text(
+                        '${sale.items.length} itens | ${sale.cliente?.nome ?? 'Consumidor'}',
+                        style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13),
+                      ),
+                      trailing: Text(
+                        Formatters.currency(total),
+                        style: const TextStyle(color: AppTheme.accentGreen, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      onTap: () {
+                        ref.read(saleNotifierProvider.notifier).resumeSale(sale.items, sale.cliente);
+                        ref.read(pendingSalesProvider.notifier).removeSale(sale.id);
+                        Navigator.pop(ctx);
+                        _searchFocus.requestFocus();
+                        _scrollToBottom();
+                        AppSnackbar.success(context, 'Venda retomada!');
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              GlassButton.outline(label: 'Cancelar', onPressed: () => Navigator.pop(ctx), expanded: true, height: 48),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openMenu() {
     showDialog(
       context: context,
@@ -204,6 +298,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
               SaleMenuItem(icon: Icons.add_circle_outline, label: 'Suprimento', shortcut: 'F6', onTap: () { Navigator.pop(ctx); _showMovementDialog('suprimento'); }),
               const Divider(color: AppTheme.divider, height: 1),
               SaleMenuItem(icon: Icons.lock_rounded, label: 'Fechar Caixa', shortcut: 'F8', onTap: () { Navigator.pop(ctx); _closeCash(); }),
+              SaleMenuItem(icon: Icons.pause_circle_outline_rounded, label: 'Vendas em Espera', shortcut: 'F11', onTap: () { Navigator.pop(ctx); _handlePauseResume(); }),
               SaleMenuItem(icon: Icons.settings_rounded, label: 'Configurações', shortcut: 'F9', onTap: () { Navigator.pop(ctx); Navigator.of(context).pushNamed('/settings'); }),
               const Divider(color: AppTheme.divider, height: 1),
               SaleMenuItem(icon: Icons.keyboard_rounded, label: 'Atalhos de Teclado', shortcut: 'F1', onTap: () { Navigator.pop(ctx); ShortcutHelpDialog.show(context); }),

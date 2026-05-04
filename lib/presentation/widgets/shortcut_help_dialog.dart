@@ -78,6 +78,7 @@ class ShortcutHelpDialog extends StatelessWidget {
                     _ShortcutRow(keyLabel: 'F2', description: 'Finalizar venda / Pagamento', color: AppTheme.accentGreen),
                     _ShortcutRow(keyLabel: 'F3', description: 'Cancelar venda atual', color: AppTheme.accentRed),
                     _ShortcutRow(keyLabel: 'F7', description: 'Buscar produtos', color: AppTheme.primaryColor),
+                    _ShortcutRow(keyLabel: 'F11', description: 'Pausar / Retomar venda', color: AppTheme.accentOrange),
                     _ShortcutRow(keyLabel: 'DEL', description: 'Remover um item específico', color: AppTheme.accentRed),
                     _ShortcutRow(keyLabel: 'ESC', description: 'Limpar busca / Fechar diálogo', color: AppTheme.onSurfaceVariant),
 

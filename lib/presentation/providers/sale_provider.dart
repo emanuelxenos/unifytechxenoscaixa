@@ -174,6 +174,14 @@ class SaleNotifier extends _$SaleNotifier {
     }
   }
 
+  /// Retoma uma venda pausada
+  void resumeSale(List<CartItem> items, Cliente? cliente) {
+    state = SaleState(
+      cart: List.from(items),
+      selectedCustomer: cliente,
+    );
+  }
+
   /// Limpa o carrinho
   void clearCart() {
     state = const SaleState();

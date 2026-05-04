@@ -26,7 +26,7 @@ final configServiceProvider = Provider<ConfigService>.internal(
 // ignore: unused_element
 typedef ConfigServiceRef = ProviderRef<ConfigService>;
 String _$apiServiceNotifierHash() =>
-    r'759cf3be46114dff7837abbb0d4996b690be4193';
+    r'f822cb6e525426cae4ed9ff4df149374cdfd3460';
 
 /// Provider singleton para ApiService (Notifier)
 ///

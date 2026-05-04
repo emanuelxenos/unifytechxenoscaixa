@@ -31,6 +31,7 @@ class GeminiTTSService {
 
       // 2. Verificar se já temos esse áudio em cache
       final appDir = await getApplicationSupportDirectory();
+      //print("Gemini: AppDir: ${appDir.path}");
       final cacheDir = Directory('${appDir.path}/voice_cache');
       if (!await cacheDir.exists()) {
         await cacheDir.create(recursive: true);
