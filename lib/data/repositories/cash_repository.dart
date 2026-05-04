@@ -38,7 +38,7 @@ class CashRepository {
 
   Future<List<PhysicalCashRegister>> listPhysicalRegisters() async {
     try {
-      final response = await _api.get(ApiEndpoints.caixaFisicos);
+      final response = await _api.get('${ApiEndpoints.caixaFisicos}?status=ativos');
       if (!response.isSuccess) return [];
       
       final data = response.data['data'];

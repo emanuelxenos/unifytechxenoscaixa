@@ -6,7 +6,7 @@ part of 'cash_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$cashNotifierHash() => r'0c1d58a6b544f977fa22651ecb2c6037be966b78';
+String _$cashNotifierHash() => r'a17dd69c44de3cac7a9a110b2675f0773d0972b8';
 
 /// See also [CashNotifier].
 @ProviderFor(CashNotifier)
