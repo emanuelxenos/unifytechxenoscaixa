@@ -5,6 +5,7 @@ import 'package:unifytechxenoscaixa/core/services/payment/providers/mock_payment
 import 'package:unifytechxenoscaixa/core/services/payment/payment_settings.dart';
 import 'package:unifytechxenoscaixa/core/services/payment/providers/mercado_pago_provider.dart';
 import 'package:unifytechxenoscaixa/core/services/payment/providers/stone_provider.dart';
+import 'package:unifytechxenoscaixa/core/services/payment/providers/sitef_provider.dart';
 import 'package:unifytechxenoscaixa/core/services/payment/providers/tef_provider.dart';
 import 'package:unifytechxenoscaixa/data/services/config_service.dart';
 
@@ -75,6 +76,13 @@ class PaymentNotifier extends _$PaymentNotifier {
         return TefProvider(
           host: s.host,
           port: s.port,
+        );
+      case PaymentProviderType.sitef:
+        return SitefProvider(
+          host: s.host,
+          port: s.port,
+          empresa: s.config['empresa'] ?? '00000000',
+          terminal: s.config['terminal'] ?? '000001',
         );
       default:
         return MockPaymentProvider();

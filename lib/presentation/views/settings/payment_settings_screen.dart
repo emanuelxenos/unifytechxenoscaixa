@@ -33,9 +33,13 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
       _controllers['deviceId'] = TextEditingController(text: config['deviceId']);
     } else if (_selectedType == PaymentProviderType.stone) {
       _controllers['ip'] = TextEditingController(text: config['ip'] ?? 'localhost');
-    } else if (_selectedType == PaymentProviderType.tef) {
+    } else if (_selectedType == PaymentProviderType.tef || _selectedType == PaymentProviderType.sitef) {
       _controllers['host'] = TextEditingController(text: config['host'] ?? 'localhost');
       _controllers['port'] = TextEditingController(text: config['port'] ?? '8080');
+      if (_selectedType == PaymentProviderType.sitef) {
+        _controllers['empresa'] = TextEditingController(text: config['empresa'] ?? '00000000');
+        _controllers['terminal'] = TextEditingController(text: config['terminal'] ?? '000001');
+      }
     }
   }
 
@@ -107,10 +111,16 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
                   onTap: () => setState(() { _selectedType = PaymentProviderType.stone; _initControllers({}); }),
                 ),
                 _ProviderCard(
-                  label: 'TEF (USB)',
+                  label: 'TEF (PayGo)',
                   icon: Icons.usb_rounded,
                   isSelected: _selectedType == PaymentProviderType.tef,
                   onTap: () => setState(() { _selectedType = PaymentProviderType.tef; _initControllers({}); }),
+                ),
+                _ProviderCard(
+                  label: 'SiTef (Empresa)',
+                  icon: Icons.apartment_rounded,
+                  isSelected: _selectedType == PaymentProviderType.sitef,
+                  onTap: () => setState(() { _selectedType = PaymentProviderType.sitef; _initControllers({}); }),
                 ),
               ],
             ),
@@ -156,6 +166,16 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
         _buildTextField('host', 'IP do Client TEF (ex: localhost)'),
         const SizedBox(height: 16),
         _buildTextField('port', 'Porta do Client TEF (ex: 8080)'),
+      ];
+    } else if (_selectedType == PaymentProviderType.sitef) {
+      return [
+        _buildTextField('host', 'IP do Servidor SiTef'),
+        const SizedBox(height: 16),
+        _buildTextField('port', 'Porta do SiTef REST'),
+        const SizedBox(height: 16),
+        _buildTextField('empresa', 'Código da Empresa (CNPJ)'),
+        const SizedBox(height: 16),
+        _buildTextField('terminal', 'ID do Terminal (ex: 000001)'),
       ];
     }
     return [];
