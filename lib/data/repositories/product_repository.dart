@@ -14,6 +14,13 @@ class ProductRepository {
     return Product.fromJson(response.data);
   }
 
+  /// Busca produto por código interno (usado em balanças)
+  Future<Product> buscarPorCodigoInterno(String codigoInterno) async {
+    final response = await _api.get(ApiEndpoints.produtosBusca, queryParams: {'codigo_interno': codigoInterno});
+    if (!response.isSuccess) throw Exception(response.errorMessage);
+    return Product.fromJson(response.data);
+  }
+
   /// Busca produtos por nome
   Future<List<Product>> buscarPorNome(String nome) async {
     final response = await _api.get(ApiEndpoints.produtosBusca, queryParams: {'nome': nome});

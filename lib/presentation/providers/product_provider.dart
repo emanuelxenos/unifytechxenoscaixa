@@ -64,6 +64,24 @@ class ProductNotifier extends _$ProductNotifier {
     }
   }
 
+  /// Busca por código interno (balança)
+  Future<Product?> searchByInternalCode(String code) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+
+    try {
+      final product = await _productRepo.buscarPorCodigoInterno(code);
+      state = state.copyWith(lastProduct: product, isLoading: false);
+      return product;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceFirst('Exception: ', ''),
+        clearLastProduct: true,
+      );
+      return null;
+    }
+  }
+
   /// Busca por nome (retorna lista)
   Future<List<Product>> searchByName(String name) async {
     if (name.trim().isEmpty) {

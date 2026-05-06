@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:unifytechxenoscaixa/core/theme/app_theme.dart';
 import 'package:unifytechxenoscaixa/core/utils/formatters.dart';
 import 'package:unifytechxenoscaixa/domain/models/cliente.dart';
+import 'package:unifytechxenoscaixa/domain/models/product.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/auth_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/cash_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/product_provider.dart';
@@ -26,6 +27,7 @@ import 'package:unifytechxenoscaixa/presentation/views/sale/widgets/product_disp
 import 'package:unifytechxenoscaixa/presentation/views/sale/widgets/summary_row.dart';
 import 'package:unifytechxenoscaixa/presentation/views/sale/widgets/sale_menu_item.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/pending_sale_provider.dart';
+import 'package:unifytechxenoscaixa/core/services/scale_service.dart';
 
 class SaleScreen extends ConsumerStatefulWidget {
   const SaleScreen({super.key});
@@ -39,6 +41,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
   final _scrollController = ScrollController();
   bool _searchFocused = false;
   bool _paymentDialogOpen = false;
+  final _scaleService = ScaleService();
 
   static const _headerStyle = TextStyle(
     color: AppTheme.onSurfaceVariant,
@@ -116,6 +119,32 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     String query = value.trim();
     if (query.isEmpty) return;
 
+    final productNotifier = ref.read(productNotifierProvider.notifier);
+    final saleNotifier = ref.read(saleNotifierProvider.notifier);
+
+    // 1. Verifica se é código de barras de balança (EAN-13 iniciado com 2)
+    if (_scaleService.isScaleBarcode(query)) {
+      final result = _scaleService.parseBarcode(query);
+      if (result != null) {
+        // BUSCA PELO CÓDIGO INTERNO (Ajustado para Option B)
+        final product = await productNotifier.searchByInternalCode(result.searchCode);
+        if (product != null) {
+          double qty = result.isPrice 
+              ? _scaleService.calculateQuantity(result.value, product.precoEfetivo) 
+              : result.value;
+          
+          saleNotifier.addProduct(product, qty: qty);
+          AudioService().playSuccess();
+          _searchController.clear();
+          _searchFocus.requestFocus();
+          _scrollToBottom();
+          if (mounted) AppSnackbar.success(context, '${Formatters.quantity(qty)} ${product.unidadeVenda} x ${product.nome} adicionado');
+          return;
+        }
+      }
+    }
+
+    // 2. Fluxo normal: Verifica multiplicador (ex: 5*789...)
     double quantity = 1;
     if (query.contains('*')) {
       final parts = query.split('*');
@@ -126,33 +155,115 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
       }
     }
 
-    final productNotifier = ref.read(productNotifierProvider.notifier);
-    final saleNotifier = ref.read(saleNotifierProvider.notifier);
-
+    // 3. Busca por código de barras normal
     final product = await productNotifier.searchByBarcode(query);
     if (product != null) {
-      saleNotifier.addProduct(product, qty: quantity);
-      AudioService().playSuccess();
-      _searchController.clear();
-      _searchFocus.requestFocus();
-      _scrollToBottom();
-      if (mounted) AppSnackbar.success(context, '$quantity x ${product.nome} adicionado');
+      if (product.isWeighted) {
+        _showWeightDialog(product);
+      } else {
+        saleNotifier.addProduct(product, qty: quantity);
+        AudioService().playSuccess();
+        _searchController.clear();
+        _searchFocus.requestFocus();
+        _scrollToBottom();
+        if (mounted) AppSnackbar.success(context, '$quantity x ${product.nome} adicionado');
+      }
       return;
     }
 
+    // 4. Busca por nome
     final results = await productNotifier.searchByName(query);
     if (results.isEmpty) {
       AudioService().playError();
       if (mounted) AppSnackbar.warning(context, 'Produto não encontrado');
     } else if (results.length == 1) {
-      saleNotifier.addProduct(results.first, qty: quantity);
-      AudioService().playSuccess();
-      _searchController.clear();
-      productNotifier.clearSearch();
-      _scrollToBottom();
-      if (mounted) AppSnackbar.success(context, '$quantity x ${results.first.nome} adicionado');
+      final p = results.first;
+      if (p.isWeighted) {
+        _showWeightDialog(p);
+      } else {
+        saleNotifier.addProduct(p, qty: quantity);
+        AudioService().playSuccess();
+        _searchController.clear();
+        productNotifier.clearSearch();
+        _scrollToBottom();
+        if (mounted) AppSnackbar.success(context, '$quantity x ${p.nome} adicionado');
+      }
     }
     _searchFocus.requestFocus();
+  }
+
+  void _showWeightDialog(Product product) {
+    final weightCtrl = TextEditingController();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 350, decoration: AppTheme.glassCard(), padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.scale_rounded, color: AppTheme.primaryColor, size: 48),
+              const SizedBox(height: 16),
+              Text(product.nome, style: const TextStyle(color: AppTheme.onBackground, fontSize: 18, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
+              const SizedBox(height: 4),
+              Text('Preço: ${Formatters.currency(product.precoEfetivo)} / ${product.unidadeVenda}', style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13)),
+              const SizedBox(height: 24),
+              
+              // Aqui futuramente entra a leitura automática da Balança USB
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2))),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.usb_rounded, size: 16, color: AppTheme.primaryColor),
+                    SizedBox(width: 8),
+                    Text('Aguardando balança USB...', style: TextStyle(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              GlassInput(
+                controller: weightCtrl, label: 'Peso (${product.unidadeVenda})', hint: '0,000', 
+                prefixIcon: Icons.monitor_weight_rounded, keyboardType: TextInputType.number, 
+                autofocus: true, textAlign: TextAlign.right, fontSize: 24,
+                onSubmitted: (val) {
+                  final weight = double.tryParse(val.replaceAll(',', '.')) ?? 0;
+                  if (weight > 0) {
+                    ref.read(saleNotifierProvider.notifier).addProduct(product, qty: weight);
+                    Navigator.pop(ctx);
+                    _searchController.clear();
+                    _searchFocus.requestFocus();
+                    _scrollToBottom();
+                  }
+                },
+              ),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(child: GlassButton.outline(label: 'Cancelar', onPressed: () => Navigator.pop(ctx), height: 46)),
+                const SizedBox(width: 12),
+                Expanded(child: GlassButton.primary(label: 'Confirmar', icon: Icons.check_rounded, onPressed: () {
+                  final weight = double.tryParse(weightCtrl.text.replaceAll(',', '.')) ?? 0;
+                  if (weight > 0) {
+                    ref.read(saleNotifierProvider.notifier).addProduct(product, qty: weight);
+                    Navigator.pop(ctx);
+                    _searchController.clear();
+                    _searchFocus.requestFocus();
+                    _scrollToBottom();
+                  } else {
+                    AppSnackbar.warning(ctx, 'Informe o peso');
+                  }
+                }, height: 46)),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showPayment() {

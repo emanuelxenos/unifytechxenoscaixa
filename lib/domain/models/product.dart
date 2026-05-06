@@ -29,6 +29,9 @@ class Product {
   /// Se está em promoção
   bool get emPromocao => precoPromocional != null && precoPromocional! < precoVenda;
 
+  /// Se o produto é vendido por peso
+  bool get isWeighted => unidadeVenda.toUpperCase() == 'KG';
+
   /// Se tem estoque disponível
   bool get temEstoque => !controlarEstoque || estoqueAtual > 0;
 
