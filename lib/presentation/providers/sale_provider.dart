@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:unifytechxenoscaixa/data/repositories/sale_repository.dart';
 import 'package:unifytechxenoscaixa/domain/models/cliente.dart';
+import 'package:unifytechxenoscaixa/domain/models/fiscal.dart';
 import 'package:unifytechxenoscaixa/domain/models/product.dart';
 import 'package:unifytechxenoscaixa/domain/models/sale.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/service_providers.dart';
@@ -14,7 +15,9 @@ class SaleState {
   final bool isLoading;
   final String? error;
   final SaleResponse? lastSaleResponse;
+  final FiscalEmitirResponse? lastFiscalResponse;
   final Cliente? selectedCustomer;
+  final bool emitindoFiscal;
 
   const SaleState({
     this.cart = const [],
@@ -22,7 +25,9 @@ class SaleState {
     this.isLoading = false,
     this.error,
     this.lastSaleResponse,
+    this.lastFiscalResponse,
     this.selectedCustomer,
+    this.emitindoFiscal = false,
   });
 
   int get itemCount => cart.length;
@@ -38,7 +43,9 @@ class SaleState {
     bool? isLoading,
     String? error,
     SaleResponse? lastSaleResponse,
+    FiscalEmitirResponse? lastFiscalResponse,
     Cliente? selectedCustomer,
+    bool? emitindoFiscal,
     bool clearError = false,
     bool clearResponse = false,
     bool removeCustomer = false,
@@ -49,7 +56,9 @@ class SaleState {
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
       lastSaleResponse: clearResponse ? null : (lastSaleResponse ?? this.lastSaleResponse),
+      lastFiscalResponse: clearResponse ? null : (lastFiscalResponse ?? this.lastFiscalResponse),
       selectedCustomer: removeCustomer ? null : (selectedCustomer ?? this.selectedCustomer),
+      emitindoFiscal: emitindoFiscal ?? this.emitindoFiscal,
     );
   }
 
@@ -163,7 +172,20 @@ class SaleNotifier extends _$SaleNotifier {
       );
 
       final response = await _saleRepo.criarVenda(request);
-      state = SaleState(lastSaleResponse: response);
+      state = state.copyWith(isLoading: false, lastSaleResponse: response, emitindoFiscal: true);
+
+      // Tenta emitir a NFC-e automaticamente
+      try {
+        final fiscalRepo = ref.read(fiscalRepositoryProvider);
+        final fiscalResp = await fiscalRepo.emitir(response.idVenda);
+        state = state.copyWith(lastFiscalResponse: fiscalResp, emitindoFiscal: false);
+      } catch (e) {
+        state = state.copyWith(
+          emitindoFiscal: false,
+          error: 'Venda salva, mas erro na NFC-e: $e',
+        );
+      }
+
       return true;
     } catch (e) {
       state = state.copyWith(

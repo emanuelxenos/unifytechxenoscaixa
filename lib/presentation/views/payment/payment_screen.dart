@@ -253,22 +253,32 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       });
     }
 
-    // Escuta sucesso
+    // Escuta sucesso da venda e emissão fiscal
     ref.listen(saleNotifierProvider, (prev, next) {
+      // Quando a venda é salva
       if (next.lastSaleResponse != null && next.lastSaleResponse != prev?.lastSaleResponse) {
-        // Dispara impressão automática (apenas uma vez)
         if (!_hasPrinted) {
           _hasPrinted = true;
           final comprovante = next.lastSaleResponse?.comprovante;
           if (comprovante != null) {
             ref.read(printServiceProvider).printReceipt(comprovante);
           }
-          // Limpa o carrinho e a resposta IMEDIATAMENTE para evitar re-trigger
+          AudioService().playSuccessSale();
+        }
+      }
+
+      // Quando a emissão fiscal termina (Sucesso ou Erro)
+      if (prev?.emitindoFiscal == true && next.emitindoFiscal == false) {
+        if (next.lastFiscalResponse != null && next.lastFiscalResponse!.success) {
+          Navigator.of(context).pop();
+          AppSnackbar.success(context, 'Venda #${next.lastSaleResponse?.numeroVenda} finalizada e NFC-e emitida!');
+          Future.microtask(() => ref.read(saleNotifierProvider.notifier).clearCart());
+        } else if (next.error != null) {
+          // Se deu erro na fiscal, mas a venda salvou, avisamos e fechamos (a venda já está no banco)
+          Navigator.of(context).pop();
+          AppSnackbar.warning(context, next.error!);
           Future.microtask(() => ref.read(saleNotifierProvider.notifier).clearCart());
         }
-
-        Navigator.of(context).pop();
-        AppSnackbar.success(context, 'Venda #${next.lastSaleResponse?.numeroVenda} finalizada!');
       }
     });
 
@@ -401,6 +411,26 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     Text(paymentState.message ?? 'Aguardando maquininha...', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     const Text('Siga as instruções na máquina', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+        // Camada de processamento fiscal
+        if (saleState.emitindoFiscal)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.8),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: AppTheme.accentGreen),
+                    const SizedBox(height: 24),
+                    Text('Gerando NFC-e...', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    const Text('Assinando e salvando XML', style: TextStyle(color: Colors.white70, fontSize: 14)),
                   ],
                 ),
               ),

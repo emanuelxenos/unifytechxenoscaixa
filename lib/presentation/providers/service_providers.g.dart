@@ -6,6 +6,23 @@ part of 'service_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$fiscalRepositoryHash() => r'a61a3aa2a2ed59110c1da43d1c05b16bf98bd3e3';
+
+/// See also [fiscalRepository].
+@ProviderFor(fiscalRepository)
+final fiscalRepositoryProvider = Provider<FiscalRepository>.internal(
+  fiscalRepository,
+  name: r'fiscalRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$fiscalRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef FiscalRepositoryRef = ProviderRef<FiscalRepository>;
 String _$configServiceHash() => r'3a58b4e353f830684d7aae159613eb46326ab0ca';
 
 /// Provider singleton para ConfigService

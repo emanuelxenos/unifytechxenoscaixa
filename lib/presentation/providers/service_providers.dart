@@ -1,8 +1,14 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:unifytechxenoscaixa/data/repositories/fiscal_repository.dart';
 import 'package:unifytechxenoscaixa/data/services/api_service.dart';
 import 'package:unifytechxenoscaixa/data/services/config_service.dart';
 
 part 'service_providers.g.dart';
+
+@Riverpod(keepAlive: true)
+FiscalRepository fiscalRepository(FiscalRepositoryRef ref) {
+  return FiscalRepository(ref.watch(apiServiceNotifierProvider));
+}
 
 /// Provider singleton para ConfigService
 @Riverpod(keepAlive: true)
