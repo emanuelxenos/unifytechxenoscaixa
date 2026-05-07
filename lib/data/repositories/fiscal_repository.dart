@@ -9,7 +9,7 @@ class FiscalRepository {
   Future<FiscalEmitirResponse> emitir(int vendaId) async {
     final response = await _api.post(
       '/api/fiscal/emitir',
-      data: {'venda_id': vendaId},
+      body: {'venda_id': vendaId},
     );
     
     // O backend retorna os dados diretamente ou dentro de um objeto 'data' dependendo da implementação do ApiService
