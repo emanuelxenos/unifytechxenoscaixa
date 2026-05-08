@@ -40,6 +40,12 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
         _controllers['empresa'] = TextEditingController(text: config['empresa'] ?? '00000000');
         _controllers['terminal'] = TextEditingController(text: config['terminal'] ?? '000001');
       }
+      if (_selectedType == PaymentProviderType.payGo) {
+        _controllers['host'] = TextEditingController(text: config['host'] ?? 'localhost');
+        _controllers['port'] = TextEditingController(text: config['port'] ?? '8080');
+        _controllers['cnpj'] = TextEditingController(text: config['cnpj'] ?? '00.000.000/0000-00');
+        _controllers['pontoCaptura'] = TextEditingController(text: config['pontoCaptura'] ?? '');
+      }
     }
   }
 
@@ -111,10 +117,10 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
                   onTap: () => setState(() { _selectedType = PaymentProviderType.stone; _initControllers({}); }),
                 ),
                 _ProviderCard(
-                  label: 'TEF (PayGo)',
+                  label: 'TEF PayGo (USB/Pinpad)',
                   icon: Icons.usb_rounded,
-                  isSelected: _selectedType == PaymentProviderType.tef,
-                  onTap: () => setState(() { _selectedType = PaymentProviderType.tef; _initControllers({}); }),
+                  isSelected: _selectedType == PaymentProviderType.payGo,
+                  onTap: () => setState(() { _selectedType = PaymentProviderType.payGo; _initControllers({}); }),
                 ),
                 _ProviderCard(
                   label: 'SiTef (Empresa)',
@@ -176,6 +182,16 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
         _buildTextField('empresa', 'Código da Empresa (CNPJ)'),
         const SizedBox(height: 16),
         _buildTextField('terminal', 'ID do Terminal (ex: 000001)'),
+      ];
+    } else if (_selectedType == PaymentProviderType.payGo) {
+      return [
+        _buildTextField('host', 'IP do Software PayGo (Localhost)'),
+        const SizedBox(height: 16),
+        _buildTextField('port', 'Porta do Software (Padrão 8080)'),
+        const SizedBox(height: 16),
+        _buildTextField('cnpj', 'CNPJ da Instalação (Sandbox)'),
+        const SizedBox(height: 16),
+        _buildTextField('pontoCaptura', 'Ponto de Captura (PDC)'),
       ];
     }
     return [];

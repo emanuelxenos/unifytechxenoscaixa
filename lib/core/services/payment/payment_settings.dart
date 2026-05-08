@@ -1,4 +1,4 @@
-enum PaymentProviderType { mock, mercadoPago, stone, pagSeguro, tef, sitef }
+enum PaymentProviderType { mock, mercadoPago, stone, pagSeguro, tef, sitef, payGo }
 
 class PaymentSettings {
   final PaymentProviderType type;

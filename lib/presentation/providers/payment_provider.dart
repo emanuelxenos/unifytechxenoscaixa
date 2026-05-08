@@ -7,6 +7,7 @@ import 'package:unifytechxenoscaixa/core/services/payment/providers/mercado_pago
 import 'package:unifytechxenoscaixa/core/services/payment/providers/stone_provider.dart';
 import 'package:unifytechxenoscaixa/core/services/payment/providers/sitef_provider.dart';
 import 'package:unifytechxenoscaixa/core/services/payment/providers/tef_provider.dart';
+import 'package:unifytechxenoscaixa/core/services/payment/providers/paygo_provider.dart';
 import 'package:unifytechxenoscaixa/data/services/config_service.dart';
 
 part 'payment_provider.g.dart';
@@ -90,6 +91,14 @@ class PaymentNotifier extends _$PaymentNotifier {
           port: s.port,
           empresa: s.config['empresa'] ?? '00000000',
           terminal: s.config['terminal'] ?? '000001',
+        );
+        break;
+      case PaymentProviderType.payGo:
+        _cachedProvider = PayGoProvider(
+          host: s.host,
+          port: s.port,
+          cnpj: s.config['cnpj'] ?? '',
+          pontoCaptura: s.config['pontoCaptura'] ?? '',
         );
         break;
       default:
