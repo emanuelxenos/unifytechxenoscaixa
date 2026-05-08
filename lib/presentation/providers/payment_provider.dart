@@ -108,7 +108,17 @@ class PaymentNotifier extends _$PaymentNotifier {
     state = state.copyWith(status: PaymentStatus.processing, message: 'Aguardando maquininha...');
     
     try {
-      final response = await _activeProvider.processPayment(amount, mode);
+      final response = await _activeProvider.processPayment(
+        amount, 
+        mode,
+        onStatusUpdate: (partialResponse) {
+          // Atualiza o estado com o QR Code assim que disponível
+          state = state.copyWith(
+            lastResponse: partialResponse,
+            message: partialResponse.message,
+          );
+        },
+      );
       
       if (response.success) {
         state = state.copyWith(

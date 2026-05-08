@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -343,7 +344,20 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       const Text('Forma de Pagamento', style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 12),
-                      Wrap(spacing: 10, runSpacing: 10, children: cashState.paymentMethods.map((f) => _PaymentMethodChip(forma: f, isSelected: _selectedFormaId == f.id, onTap: () => _selectForma(f.id))).toList()),
+                      Wrap(
+                        spacing: 10, 
+                        runSpacing: 10, 
+                        children: cashState.paymentMethods.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final f = entry.value;
+                          return _PaymentMethodChip(
+                            forma: f, 
+                            isSelected: _selectedFormaId == f.id, 
+                            onTap: () => _selectForma(f.id),
+                            shortcut: (index + 1).toString(),
+                          );
+                        }).toList(),
+                      ),
                       const SizedBox(height: 20),
                       
                       // LÓGICA DE EXIBIÇÃO DO CAMPO DE VALOR: SÓ APARECE PARA DINHEIRO
@@ -423,21 +437,77 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const CircularProgressIndicator(color: AppTheme.primaryColor),
-                      const SizedBox(height: 24),
+                      if (paymentState.lastResponse?.qrCodeBase64 != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, spreadRadius: 5)]),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('PAGUE COM PIX', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2)),
+                              const SizedBox(height: 12),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.memory(base64Decode(paymentState.lastResponse!.qrCodeBase64!), width: 220, height: 220, fit: BoxFit.contain),
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.qr_code_scanner_rounded, size: 16, color: AppTheme.primaryColor),
+                                    SizedBox(width: 8),
+                                    Text('Escaneie com seu banco', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ] else ...[
+                        const CircularProgressIndicator(color: AppTheme.primaryColor),
+                        const SizedBox(height: 24),
+                      ],
                       Text(paymentState.message ?? 'Aguardando maquininha...', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
-                      const Text('Siga as instruções na máquina', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      Text(
+                        paymentState.lastResponse?.qrCode != null ? 'O QR Code também aparece na maquininha' : 'Siga as instruções na máquina', 
+                        style: const TextStyle(color: Colors.white70, fontSize: 14)
+                      ),
                       const SizedBox(height: 32),
-                      SizedBox(
-                        width: 200,
-                        child: GlassButton.outline(
-                          label: 'Cancelar (ESC)', 
-                          icon: Icons.close_rounded, 
-                          onPressed: () {
-                            ref.read(paymentNotifierProvider.notifier).cancel();
-                          }
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (paymentState.lastResponse?.qrCode != null) ...[
+                            SizedBox(
+                              width: 180,
+                              child: GlassButton.outline(
+                                label: 'Copia e Cola', 
+                                icon: Icons.copy_rounded, 
+                                onPressed: () {
+                                  Clipboard.setData(ClipboardData(text: paymentState.lastResponse!.qrCode!));
+                                  AppSnackbar.success(context, 'Código Pix copiado!');
+                                },
+                                height: 45,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                          ],
+                          SizedBox(
+                            width: 180,
+                            child: GlassButton.danger(
+                              label: 'Cancelar (ESC)', 
+                              icon: Icons.close_rounded, 
+                              onPressed: () {
+                                ref.read(paymentNotifierProvider.notifier).cancel();
+                              },
+                              height: 45,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -486,8 +556,17 @@ class _PayRow extends StatelessWidget {
 }
 
 class _PaymentMethodChip extends StatefulWidget {
-  final PaymentMethod forma; final bool isSelected; final VoidCallback onTap;
-  const _PaymentMethodChip({required this.forma, required this.isSelected, required this.onTap});
+  final PaymentMethod forma; 
+  final bool isSelected; 
+  final VoidCallback onTap;
+  final String shortcut;
+
+  const _PaymentMethodChip({
+    required this.forma, 
+    required this.isSelected, 
+    required this.onTap,
+    required this.shortcut,
+  });
   @override
   State<_PaymentMethodChip> createState() => _PaymentMethodChipState();
 }
@@ -499,19 +578,41 @@ class _PaymentMethodChipState extends State<_PaymentMethodChip> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(cursor: SystemMouseCursors.click, onEnter: (_) => setState(() => _hovered = true), onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(onTap: widget.onTap,
-        child: AnimatedContainer(duration: const Duration(milliseconds: 200), width: 120, height: 80,
-          decoration: BoxDecoration(
-            color: widget.isSelected ? _color.withOpacity(0.15) : _hovered ? AppTheme.surfaceVariant : AppTheme.surfaceVariant.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: widget.isSelected ? _color : AppTheme.outline, width: widget.isSelected ? 2 : 1),
+    return Tooltip(
+      message: 'Pressione ${widget.shortcut} para selecionar',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click, 
+        onEnter: (_) => setState(() => _hovered = true), 
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200), 
+            width: 120, 
+            height: 80,
+            decoration: BoxDecoration(
+              color: widget.isSelected ? _color.withOpacity(0.15) : _hovered ? AppTheme.surfaceVariant : AppTheme.surfaceVariant.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: widget.isSelected ? _color : AppTheme.outline, width: widget.isSelected ? 2 : 1),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center, 
+              children: [
+                Icon(_icon, color: widget.isSelected ? _color : AppTheme.onSurfaceVariant, size: 26),
+                const SizedBox(height: 6),
+                Text(widget.forma.nome, style: TextStyle(color: widget.isSelected ? _color : AppTheme.onSurface, fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(
+                  '[${widget.shortcut}]', 
+                  style: TextStyle(
+                    color: (widget.isSelected ? _color : AppTheme.onSurfaceVariant).withOpacity(0.6), 
+                    fontSize: 10, 
+                    fontWeight: FontWeight.bold
+                  )
+                ),
+              ],
+            ),
           ),
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(_icon, color: widget.isSelected ? _color : AppTheme.onSurfaceVariant, size: 26),
-            const SizedBox(height: 6),
-            Text(widget.forma.nome, style: TextStyle(color: widget.isSelected ? _color : AppTheme.onSurface, fontSize: 12, fontWeight: FontWeight.w600)),
-          ]),
         ),
       ),
     );

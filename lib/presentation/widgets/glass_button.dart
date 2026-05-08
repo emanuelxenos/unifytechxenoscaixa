@@ -237,17 +237,21 @@ class _GlassButtonState extends State<GlassButton>
                             ),
                             const SizedBox(width: 10),
                           ],
-                          Text(
-                            widget.label,
-                            style: TextStyle(
-                              fontSize: widget.fontSize,
-                              fontWeight: FontWeight.w600,
-                              color: isDisabled
-                                  ? AppTheme.onSurfaceVariant
-                                  : widget.isOutlined
-                                      ? effectiveColor
-                                      : widget.textColor ?? Colors.white,
-                              letterSpacing: 0.3,
+                          Flexible(
+                            child: Text(
+                              widget.label,
+                              style: TextStyle(
+                                fontSize: widget.fontSize,
+                                fontWeight: FontWeight.w600,
+                                color: isDisabled
+                                    ? AppTheme.onSurfaceVariant
+                                    : widget.isOutlined
+                                        ? effectiveColor
+                                        : widget.textColor ?? Colors.white,
+                                letterSpacing: 0.3,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

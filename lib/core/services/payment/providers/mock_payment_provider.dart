@@ -6,7 +6,11 @@ class MockPaymentProvider implements CardPaymentProvider {
   String get name => "Simulador de Teste";
 
   @override
-  Future<PaymentResponse> processPayment(double amount, PaymentMode mode) async {
+  Future<PaymentResponse> processPayment(
+    double amount, 
+    PaymentMode mode, {
+    void Function(PaymentResponse)? onStatusUpdate,
+  }) async {
     // Simula o tempo de processamento da maquininha
     await Future.delayed(const Duration(seconds: 3));
     

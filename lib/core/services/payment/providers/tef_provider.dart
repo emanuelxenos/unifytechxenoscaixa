@@ -14,7 +14,11 @@ class TefProvider implements CardPaymentProvider {
   String get name => "TEF Multiadquirente";
 
   @override
-  Future<PaymentResponse> processPayment(double amount, PaymentMode mode) async {
+  Future<PaymentResponse> processPayment(
+    double amount, 
+    PaymentMode mode, {
+    void Function(PaymentResponse)? onStatusUpdate,
+  }) async {
     // Endpoint padrão do PayGo Web
     final url = Uri.parse('http://$host:$port/v1/venda');
     

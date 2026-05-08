@@ -11,7 +11,11 @@ class StoneProvider implements CardPaymentProvider {
   String get name => "Stone POS Bridge";
 
   @override
-  Future<PaymentResponse> processPayment(double amount, PaymentMode mode) async {
+  Future<PaymentResponse> processPayment(
+    double amount, 
+    PaymentMode mode, {
+    void Function(PaymentResponse)? onStatusUpdate,
+  }) async {
     final url = Uri.parse('http://$bridgeIp:8080/transacao'); // Porta padrão do Bridge
     
     try {

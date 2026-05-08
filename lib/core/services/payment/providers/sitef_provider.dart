@@ -21,7 +21,11 @@ class SitefProvider implements CardPaymentProvider {
   String get name => "SiTef (Software Express)";
 
   @override
-  Future<PaymentResponse> processPayment(double amount, PaymentMode mode) async {
+  Future<PaymentResponse> processPayment(
+    double amount, 
+    PaymentMode mode, {
+    void Function(PaymentResponse)? onStatusUpdate,
+  }) async {
     // Porta padrão do SiTef REST costuma ser 8080 ou 8888
     final url = Uri.parse('http://$host:$port/v1/pagamento');
     
