@@ -27,6 +27,7 @@ import 'package:unifytechxenoscaixa/presentation/views/sale/widgets/product_disp
 import 'package:unifytechxenoscaixa/presentation/views/sale/widgets/summary_row.dart';
 import 'package:unifytechxenoscaixa/presentation/views/sale/widgets/sale_menu_item.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/pending_sale_provider.dart';
+import 'package:unifytechxenoscaixa/presentation/providers/fiscal_settings_provider.dart';
 import 'package:unifytechxenoscaixa/core/services/scale_service.dart';
 
 class SaleScreen extends ConsumerStatefulWidget {
@@ -83,7 +84,10 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
 
     if (key == LogicalKeyboardKey.f1) { ShortcutHelpDialog.show(context); return true; }
     if (key == LogicalKeyboardKey.f2) { _showPayment(); return true; }
-    if (key == LogicalKeyboardKey.f3) { _cancelSale(); return true; }
+    if (key == LogicalKeyboardKey.f3) { 
+      ref.read(fiscalSettingsProvider.notifier).toggle(); 
+      return true; 
+    }
     if (key == LogicalKeyboardKey.f4) { _openMenu(); return true; }
     if (key == LogicalKeyboardKey.f5) { _showMovementDialog('sangria'); return true; }
     if (key == LogicalKeyboardKey.f6) { _showMovementDialog('suprimento'); return true; }
@@ -92,6 +96,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     if (key == LogicalKeyboardKey.f9) { Navigator.of(context).pushNamed('/settings'); return true; }
     if (key == LogicalKeyboardKey.f10) { CustomerSearchDialog.show(context); return true; }
     if (key == LogicalKeyboardKey.f11) { _handlePauseResume(); return true; }
+    if (key == LogicalKeyboardKey.f12) { _cancelSale(); return true; }
     if (key == LogicalKeyboardKey.delete) { _showRemoveItemDialog(); return true; }
     if (key == LogicalKeyboardKey.escape) {
       if (_searchController.text.isNotEmpty) {
@@ -763,7 +768,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
         GlassButton.success(label: 'Finalizar (F2)', icon: Icons.shopping_cart_checkout_rounded, onPressed: saleState.isEmpty ? null : _showPayment, expanded: true, height: 60),
         const SizedBox(height: 10),
         Row(children: [
-          Expanded(child: GlassButton.danger(label: 'Cancelar (F3)', icon: Icons.cancel_rounded, onPressed: saleState.isEmpty ? null : _cancelSale, height: 48)),
+          Expanded(child: GlassButton.danger(label: 'Cancelar (F12)', icon: Icons.cancel_rounded, onPressed: saleState.isEmpty ? null : _cancelSale, height: 48)),
           const SizedBox(width: 10),
           Expanded(child: GlassButton.outline(label: 'Fechar (F8)', icon: Icons.lock_rounded, onPressed: saleState.isEmpty ? _closeCash : null, height: 48, color: AppTheme.accentOrange)),
         ]),

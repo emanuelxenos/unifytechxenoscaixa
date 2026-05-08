@@ -76,9 +76,10 @@ class ShortcutHelpDialog extends StatelessWidget {
                     _SectionTitle(icon: Icons.shopping_cart_rounded, label: 'Vendas', color: AppTheme.accentGreen),
                     const SizedBox(height: 10),
                     _ShortcutRow(keyLabel: 'F2', description: 'Finalizar venda / Pagamento', color: AppTheme.accentGreen),
-                    _ShortcutRow(keyLabel: 'F3', description: 'Cancelar venda atual', color: AppTheme.accentRed),
+                    _ShortcutRow(keyLabel: 'F3', description: 'Alternar Emissão NFC-e (Liga/Desliga)', color: AppTheme.accentBlue),
                     _ShortcutRow(keyLabel: 'F7', description: 'Buscar produtos', color: AppTheme.primaryColor),
                     _ShortcutRow(keyLabel: 'F11', description: 'Pausar / Retomar venda', color: AppTheme.accentOrange),
+                    _ShortcutRow(keyLabel: 'F12', description: 'Cancelar venda atual', color: AppTheme.accentRed),
                     _ShortcutRow(keyLabel: 'DEL', description: 'Remover um item específico', color: AppTheme.accentRed),
                     _ShortcutRow(keyLabel: 'ESC', description: 'Limpar busca / Fechar diálogo', color: AppTheme.onSurfaceVariant),
 

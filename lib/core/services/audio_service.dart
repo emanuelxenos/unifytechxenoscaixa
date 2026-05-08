@@ -7,12 +7,11 @@ class AudioService {
   AudioService._internal();
 
   final AudioPlayer _player = AudioPlayer();
-  final AudioPlayer _errorPlayer = AudioPlayer();
-  final AudioPlayer _finishPlayer = AudioPlayer();
 
   /// Toca o som de sucesso (Bip)
   Future<void> playSuccess() async {
     try {
+      await Future.delayed(const Duration(milliseconds: 100));
       await _player.stop();
       await _player.play(AssetSource('sounds/beep.mp3'));
     } catch (_) {
@@ -23,8 +22,9 @@ class AudioService {
   /// Toca o som de venda finalizada com sucesso
   Future<void> playSuccessSale() async {
     try {
-      await _finishPlayer.stop();
-      await _finishPlayer.play(AssetSource('sounds/success.mp3'));
+      await Future.delayed(const Duration(milliseconds: 300));
+      await _player.stop();
+      await _player.play(AssetSource('sounds/success.mp3'));
     } catch (_) {
       // Fallback
     }
@@ -33,8 +33,9 @@ class AudioService {
   /// Toca o som de erro
   Future<void> playError() async {
     try {
-      await _errorPlayer.stop();
-      await _errorPlayer.play(AssetSource('sounds/error.mp3'));
+      await Future.delayed(const Duration(milliseconds: 100));
+      await _player.stop();
+      await _player.play(AssetSource('sounds/error.mp3'));
     } catch (_) {
       SystemSound.play(SystemSoundType.click);
     }
@@ -42,7 +43,5 @@ class AudioService {
 
   void dispose() {
     _player.dispose();
-    _errorPlayer.dispose();
-    _finishPlayer.dispose();
   }
 }

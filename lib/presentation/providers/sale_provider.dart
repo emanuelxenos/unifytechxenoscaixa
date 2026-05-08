@@ -153,7 +153,7 @@ class SaleNotifier extends _$SaleNotifier {
   }
 
   /// Finaliza a venda enviando ao servidor
-  Future<bool> finalizeSale(List<CreatePaymentRequest> pagamentos, {int? clienteId, String? observacoes}) async {
+  Future<bool> finalizeSale(List<CreatePaymentRequest> pagamentos, {int? clienteId, String? observacoes, bool emitirFiscal = true}) async {
     if (state.isEmpty) return false;
 
     state = state.copyWith(isLoading: true, clearError: true);
@@ -172,6 +172,12 @@ class SaleNotifier extends _$SaleNotifier {
       );
 
       final response = await _saleRepo.criarVenda(request);
+      
+      if (!emitirFiscal) {
+        state = state.copyWith(isLoading: false, lastSaleResponse: response, emitindoFiscal: false);
+        return true;
+      }
+
       state = state.copyWith(isLoading: false, lastSaleResponse: response, emitindoFiscal: true);
 
       // Tenta emitir a NFC-e automaticamente

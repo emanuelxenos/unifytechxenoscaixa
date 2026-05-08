@@ -7,12 +7,14 @@ import 'package:unifytechxenoscaixa/domain/models/payment_method.dart';
 import 'package:unifytechxenoscaixa/domain/models/sale.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/cash_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/sale_provider.dart';
+import 'package:unifytechxenoscaixa/presentation/providers/fiscal_settings_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/app_snackbar.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_button.dart';
 import 'package:unifytechxenoscaixa/presentation/providers/payment_provider.dart';
 import 'package:unifytechxenoscaixa/core/services/payment/card_payment_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/customer_search_dialog.dart';
 import 'package:unifytechxenoscaixa/core/services/print_service.dart';
+import 'package:unifytechxenoscaixa/core/services/audio_service.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key});
@@ -23,7 +25,7 @@ class PaymentScreen extends ConsumerStatefulWidget {
 class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   final _valorController = TextEditingController();
 
-  final List<_PaymentEntry> _pagamentos = [];
+  final _pagamentos = [];
   int? _selectedFormaId;
   double _valorTotal = 0;
   bool _hasPrinted = false;
@@ -210,12 +212,16 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     
     final saleNotifier = ref.read(saleNotifierProvider.notifier);
     final pagamentos = _pagamentos.map((p) => CreatePaymentRequest(
-      formaPagamentoId: p.formaPagamentoId, 
+      formaPagamentoId: (p as _PaymentEntry).formaPagamentoId, 
       valor: p.valor,
-      autorizacao: p.transactionId, // Envia o ID da maquininha para o banco
+      autorizacao: p.transactionId, 
     )).toList();
     
-    await saleNotifier.finalizeSale(pagamentos, clienteId: saleState.selectedCustomer?.id);
+    await saleNotifier.finalizeSale(
+      pagamentos, 
+      clienteId: saleState.selectedCustomer?.id,
+      emitirFiscal: ref.read(fiscalSettingsProvider),
+    );
   }
 
   bool _shouldShowValueField(List<PaymentMethod> formas) {
@@ -253,9 +259,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       });
     }
 
-    // Escuta sucesso da venda e emissão fiscal
+    // Ouvinte único para estados de venda e fiscal
     ref.listen(saleNotifierProvider, (prev, next) {
-      // Quando a venda é salva
+      // 1. Sucesso da Venda (Som e Impressão)
       if (next.lastSaleResponse != null && next.lastSaleResponse != prev?.lastSaleResponse) {
         if (!_hasPrinted) {
           _hasPrinted = true;
@@ -265,32 +271,40 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           }
           AudioService().playSuccessSale();
         }
-      }
-
-      // Quando a emissão fiscal termina (Sucesso ou Erro)
-      if (prev?.emitindoFiscal == true && next.emitindoFiscal == false) {
-        if (next.lastFiscalResponse != null && next.lastFiscalResponse!.success) {
-          Navigator.of(context).pop();
-          AppSnackbar.success(context, 'Venda #${next.lastSaleResponse?.numeroVenda} finalizada e NFC-e emitida!');
-          Future.microtask(() => ref.read(saleNotifierProvider.notifier).clearCart());
-        } else if (next.error != null) {
-          // Se deu erro na fiscal, mas a venda salvou, avisamos e fechamos (a venda já está no banco)
-          Navigator.of(context).pop();
-          AppSnackbar.warning(context, next.error!);
+        
+        // Se NÃO for emitir fiscal, já fecha a tela aqui
+        if (!next.emitindoFiscal) {
+          if (mounted && Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          }
+          AppSnackbar.success(context, 'Venda #${next.lastSaleResponse?.numeroVenda} finalizada!');
           Future.microtask(() => ref.read(saleNotifierProvider.notifier).clearCart());
         }
       }
-    });
 
-    // Escuta erro (Ex: Limite excedido no backend)
-    ref.listen(saleNotifierProvider, (prev, next) {
-      if (next.error != null) {
-        // FECHA O MODAL NA MARRETA
-        Navigator.of(context).pop();
-        // Mostra o erro na tela principal
+      // 2. Finalização Fiscal (Sucesso ou Erro)
+      final terminouFiscal = prev?.emitindoFiscal == true && next.emitindoFiscal == false;
+      if (terminouFiscal) {
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+
+        if (next.lastFiscalResponse != null && next.lastFiscalResponse!.success) {
+          AppSnackbar.success(context, 'Venda #${next.lastSaleResponse?.numeroVenda} finalizada e NFC-e emitida!');
+        } else if (next.error != null) {
+          AppSnackbar.warning(context, next.error!);
+        }
+        
+        Future.microtask(() => ref.read(saleNotifierProvider.notifier).clearCart());
+      }
+
+      // 3. Tratamento de Erros Gerais
+      if (next.error != null && next.error != prev?.error && !next.emitindoFiscal && next.lastSaleResponse == null) {
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
         AppSnackbar.error(context, next.error!);
-        // Limpa o erro para não disparar de novo
-        Future.microtask(() => ref.read(saleNotifierProvider.notifier).clearError());
+        ref.read(saleNotifierProvider.notifier).clearError();
       }
     });
 
@@ -309,6 +323,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   child: Row(children: [
                     const Icon(Icons.payment_rounded, color: Colors.white, size: 28), const SizedBox(width: 14),
                     const Expanded(child: Text('Pagamento', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700))),
+                    const SizedBox(width: 16),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -400,32 +415,32 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         // Camada de processamento do cartão
         if (paymentState.status == PaymentStatus.processing)
           Positioned.fill(
-            child: Container(
-              color: Colors.black.withOpacity(0.8),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(color: AppTheme.primaryColor),
-                    const SizedBox(height: 24),
-                    Text(paymentState.message ?? 'Aguardando maquininha...', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    const Text('Siga as instruções na máquina', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                    const SizedBox(height: 32),
-                    SizedBox(
-                      width: 200,
-                      child: GlassButton.outline(
-                        label: 'Cancelar (ESC)', 
-                        icon: Icons.close_rounded, 
-                        onPressed: () {
-                          // Implementar cancelamento se necessário ou apenas fechar o modal localmente
-                          // Por enquanto, o polling vai parar se o widget for destruído (se usarmos cancelToken)
-                          // Mas como é um Provider, vamos usar cancel()
-                          ref.read(paymentNotifierProvider.notifier).cancel();
-                        }
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                color: Colors.black.withOpacity(0.8),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(color: AppTheme.primaryColor),
+                      const SizedBox(height: 24),
+                      Text(paymentState.message ?? 'Aguardando maquininha...', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 8),
+                      const Text('Siga as instruções na máquina', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: 200,
+                        child: GlassButton.outline(
+                          label: 'Cancelar (ESC)', 
+                          icon: Icons.close_rounded, 
+                          onPressed: () {
+                            ref.read(paymentNotifierProvider.notifier).cancel();
+                          }
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -434,18 +449,21 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         // Camada de processamento fiscal
         if (saleState.emitindoFiscal)
           Positioned.fill(
-            child: Container(
-              color: Colors.black.withOpacity(0.8),
-              child: const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(color: AppTheme.accentGreen),
-                    const SizedBox(height: 24),
-                    Text('Gerando NFC-e...', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    const Text('Assinando e salvando XML', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                  ],
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                color: Colors.black.withOpacity(0.8),
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: AppTheme.accentGreen),
+                      const SizedBox(height: 24),
+                      Text('Gerando NFC-e...', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 8),
+                      const Text('Assinando e salvando XML', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    ],
+                  ),
                 ),
               ),
             ),
