@@ -411,6 +411,20 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     Text(paymentState.message ?? 'Aguardando maquininha...', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     const Text('Siga as instruções na máquina', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: 200,
+                      child: GlassButton.outline(
+                        label: 'Cancelar (ESC)', 
+                        icon: Icons.close_rounded, 
+                        onPressed: () {
+                          // Implementar cancelamento se necessário ou apenas fechar o modal localmente
+                          // Por enquanto, o polling vai parar se o widget for destruído (se usarmos cancelToken)
+                          // Mas como é um Provider, vamos usar cancel()
+                          ref.read(paymentNotifierProvider.notifier).cancel();
+                        }
+                      ),
+                    ),
                   ],
                 ),
               ),

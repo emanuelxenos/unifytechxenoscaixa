@@ -60,37 +60,47 @@ class PaymentNotifier extends _$PaymentNotifier {
     }
   }
 
+  CardPaymentProvider? _cachedProvider;
+
   CardPaymentProvider get _activeProvider {
+    if (_cachedProvider != null) return _cachedProvider!;
+    
     final s = state.settings;
     switch (s.type) {
       case PaymentProviderType.mercadoPago:
-        return MercadoPagoProvider(
+        _cachedProvider = MercadoPagoProvider(
           accessToken: s.config['token'] ?? '',
           deviceId: s.config['deviceId'] ?? '',
         );
+        break;
       case PaymentProviderType.stone:
-        return StoneProvider(
+        _cachedProvider = StoneProvider(
           bridgeIp: s.config['ip'] ?? 'localhost',
         );
+        break;
       case PaymentProviderType.tef:
-        return TefProvider(
+        _cachedProvider = TefProvider(
           host: s.host,
           port: s.port,
         );
+        break;
       case PaymentProviderType.sitef:
-        return SitefProvider(
+        _cachedProvider = SitefProvider(
           host: s.host,
           port: s.port,
           empresa: s.config['empresa'] ?? '00000000',
           terminal: s.config['terminal'] ?? '000001',
         );
+        break;
       default:
-        return MockPaymentProvider();
+        _cachedProvider = MockPaymentProvider();
     }
+    return _cachedProvider!;
   }
 
   Future<void> updateSettings(PaymentSettings newSettings) async {
     state = state.copyWith(settings: newSettings);
+    _cachedProvider = null; // Limpa o cache para criar um novo com os novos dados
     await _configService.savePaymentSettings(jsonEncode(newSettings.toJson()));
   }
 
@@ -120,6 +130,14 @@ class PaymentNotifier extends _$PaymentNotifier {
       );
       return PaymentResponse(success: false, message: e.toString());
     }
+  }
+
+  Future<void> cancel() async {
+    final response = state.lastResponse;
+    if (response != null && response.transactionId != null) {
+      await _activeProvider.cancelTransaction(response.transactionId!);
+    }
+    reset();
   }
 
   void reset() {
