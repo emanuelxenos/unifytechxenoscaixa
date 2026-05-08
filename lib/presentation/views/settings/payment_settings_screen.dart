@@ -20,29 +20,48 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    // Inicializa com o que tiver no momento
     final settings = ref.read(paymentNotifierProvider).settings;
     _selectedType = settings.type;
-    _initControllers(settings.config);
+    _initControllers();
+    
+    // Escuta mudanças (caso o carregamento do banco termine depois do initState)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final currentSettings = ref.read(paymentNotifierProvider).settings;
+        if (currentSettings.type != PaymentProviderType.mock && _selectedType == PaymentProviderType.mock) {
+          setState(() {
+            _selectedType = currentSettings.type;
+            _initControllers();
+          });
+        }
+      }
+    });
   }
 
-  void _initControllers(Map<String, String> config) {
+  void _initControllers() {
+    final currentSettings = ref.read(paymentNotifierProvider).settings;
+    final Map<String, String> config = (_selectedType == currentSettings.type) 
+        ? currentSettings.config 
+        : {};
+
     _controllers.clear();
     // Campos necessários por tipo
     if (_selectedType == PaymentProviderType.mercadoPago) {
-      _controllers['token'] = TextEditingController(text: config['token']);
-      _controllers['deviceId'] = TextEditingController(text: config['deviceId']);
+      _controllers['token'] = TextEditingController(text: config['token'] ?? '');
+      _controllers['deviceId'] = TextEditingController(text: config['deviceId'] ?? '');
     } else if (_selectedType == PaymentProviderType.stone) {
       _controllers['ip'] = TextEditingController(text: config['ip'] ?? 'localhost');
-    } else if (_selectedType == PaymentProviderType.tef || _selectedType == PaymentProviderType.sitef) {
+    } else if (_selectedType == PaymentProviderType.tef || _selectedType == PaymentProviderType.sitef || _selectedType == PaymentProviderType.payGo) {
       _controllers['host'] = TextEditingController(text: config['host'] ?? 'localhost');
       _controllers['port'] = TextEditingController(text: config['port'] ?? '8080');
+      
       if (_selectedType == PaymentProviderType.sitef) {
         _controllers['empresa'] = TextEditingController(text: config['empresa'] ?? '00000000');
         _controllers['terminal'] = TextEditingController(text: config['terminal'] ?? '000001');
       }
+      
       if (_selectedType == PaymentProviderType.payGo) {
-        _controllers['host'] = TextEditingController(text: config['host'] ?? 'localhost');
-        _controllers['port'] = TextEditingController(text: config['port'] ?? '8080');
         _controllers['cnpj'] = TextEditingController(text: config['cnpj'] ?? '00.000.000/0000-00');
         _controllers['pontoCaptura'] = TextEditingController(text: config['pontoCaptura'] ?? '');
       }
@@ -102,31 +121,31 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
                   label: 'Simulador (Teste)',
                   icon: Icons.science_rounded,
                   isSelected: _selectedType == PaymentProviderType.mock,
-                  onTap: () => setState(() { _selectedType = PaymentProviderType.mock; _initControllers({}); }),
+                  onTap: () => setState(() { _selectedType = PaymentProviderType.mock; _initControllers(); }),
                 ),
                 _ProviderCard(
                   label: 'Mercado Pago',
                   icon: Icons.payments_rounded,
                   isSelected: _selectedType == PaymentProviderType.mercadoPago,
-                  onTap: () => setState(() { _selectedType = PaymentProviderType.mercadoPago; _initControllers({}); }),
+                  onTap: () => setState(() { _selectedType = PaymentProviderType.mercadoPago; _initControllers(); }),
                 ),
                 _ProviderCard(
                   label: 'Stone',
                   icon: Icons.point_of_sale_rounded,
                   isSelected: _selectedType == PaymentProviderType.stone,
-                  onTap: () => setState(() { _selectedType = PaymentProviderType.stone; _initControllers({}); }),
+                  onTap: () => setState(() { _selectedType = PaymentProviderType.stone; _initControllers(); }),
                 ),
                 _ProviderCard(
                   label: 'TEF PayGo (USB/Pinpad)',
                   icon: Icons.usb_rounded,
                   isSelected: _selectedType == PaymentProviderType.payGo,
-                  onTap: () => setState(() { _selectedType = PaymentProviderType.payGo; _initControllers({}); }),
+                  onTap: () => setState(() { _selectedType = PaymentProviderType.payGo; _initControllers(); }),
                 ),
                 _ProviderCard(
                   label: 'SiTef (Empresa)',
                   icon: Icons.apartment_rounded,
                   isSelected: _selectedType == PaymentProviderType.sitef,
-                  onTap: () => setState(() { _selectedType = PaymentProviderType.sitef; _initControllers({}); }),
+                  onTap: () => setState(() { _selectedType = PaymentProviderType.sitef; _initControllers(); }),
                 ),
               ],
             ),
