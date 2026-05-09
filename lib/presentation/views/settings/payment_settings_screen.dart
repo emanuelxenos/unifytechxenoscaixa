@@ -5,6 +5,7 @@ import 'package:unifytechxenoscaixa/core/services/payment/payment_settings.dart'
 import 'package:unifytechxenoscaixa/presentation/providers/payment_provider.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_button.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/app_snackbar.dart';
+import 'package:unifytechxenoscaixa/core/services/payment/providers/mercado_pago_provider.dart';
 
 class PaymentSettingsScreen extends ConsumerStatefulWidget {
   const PaymentSettingsScreen({super.key});
@@ -16,6 +17,7 @@ class PaymentSettingsScreen extends ConsumerStatefulWidget {
 class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
   late PaymentProviderType _selectedType;
   final Map<String, TextEditingController> _controllers = {};
+  bool _isSearching = false;
 
   @override
   void initState() {
@@ -180,7 +182,27 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
       return [
         _buildTextField('token', 'Access Token do Mercado Pago', isPassword: true),
         const SizedBox(height: 16),
-        _buildTextField('deviceId', 'ID do Dispositivo (Maquininha)'),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(child: _buildTextField('deviceId', 'ID do Dispositivo (Maquininha)')),
+            const SizedBox(width: 12),
+            SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _isSearching ? null : _searchDevices,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                child: _isSearching 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.search_rounded, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
       ];
     } else if (_selectedType == PaymentProviderType.stone) {
       return [
@@ -214,6 +236,66 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
       ];
     }
     return [];
+  }
+
+  Future<void> _searchDevices() async {
+    final token = _controllers['token']?.text ?? '';
+    if (token.isEmpty) {
+      AppSnackbar.error(context, 'Insira o Access Token primeiro!');
+      return;
+    }
+
+    setState(() => _isSearching = true);
+
+    try {
+      final provider = MercadoPagoProvider(accessToken: token, deviceId: '');
+      final devices = await provider.getDevices();
+
+      if (!mounted) return;
+      setState(() => _isSearching = false);
+
+      if (devices.isEmpty) {
+        AppSnackbar.warning(context, 'Nenhum dispositivo encontrado nesta conta.');
+        return;
+      }
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Selecione sua Maquininha'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: devices.length,
+              separatorBuilder: (_, __) => const Divider(),
+              itemBuilder: (context, i) {
+                final d = devices[i];
+                return ListTile(
+                  leading: const Icon(Icons.point_of_sale_rounded, color: AppTheme.primaryColor),
+                  title: Text(d['name'] ?? 'Sem Nome'),
+                  subtitle: Text('S/N: ${d['sn']}'),
+                  onTap: () {
+                    setState(() {
+                      _controllers['deviceId']?.text = d['id']!;
+                    });
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSearching = false);
+        AppSnackbar.error(context, 'Erro ao buscar dispositivos: $e');
+      }
+    }
   }
 
   Widget _buildTextField(String key, String label, {bool isPassword = false}) {

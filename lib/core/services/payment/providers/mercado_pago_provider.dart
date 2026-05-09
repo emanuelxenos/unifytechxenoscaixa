@@ -262,4 +262,31 @@ class MercadoPagoProvider implements CardPaymentProvider {
       return false;
     }
   }
+
+  /// Busca a lista de dispositivos vinculados ao Access Token
+  Future<List<Map<String, String>>> getDevices() async {
+    final url = Uri.parse('https://api.mercadopago.com/point/integration-api/devices');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List devices = data['devices'] ?? [];
+        return devices.map<Map<String, String>>((d) => {
+          'id': d['id'].toString(),
+          'name': d['pos_id']?.toString() ?? 'Terminal sem nome',
+          'sn': d['id'].toString().split('__').last,
+        }).toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
 }
