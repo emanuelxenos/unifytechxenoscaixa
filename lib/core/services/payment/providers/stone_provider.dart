@@ -3,12 +3,13 @@ import 'package:http/http.dart' as http;
 import '../card_payment_provider.dart';
 
 class StoneProvider implements CardPaymentProvider {
-  final String bridgeIp; // Geralmente localhost ou IP da rede
+  final String apiKey;
+  final String terminalId;
 
-  StoneProvider({required this.bridgeIp});
+  StoneProvider({required this.apiKey, required this.terminalId});
 
   @override
-  String get name => "Stone POS Bridge";
+  String get name => "Stone Connect (Direto)";
 
   @override
   Future<PaymentResponse> processPayment(
@@ -16,31 +17,60 @@ class StoneProvider implements CardPaymentProvider {
     PaymentMode mode, {
     void Function(PaymentResponse)? onStatusUpdate,
   }) async {
-    final url = Uri.parse('http://$bridgeIp:8080/transacao'); // Porta padrão do Bridge
+    const url = 'https://api.pagar.me/core/v5/orders';
     
+    // Converte para centavos
+    final int amountInCents = (amount * 100).toInt();
+    
+    // Mapeia o método de pagamento
+    String method = "credit_card";
+    if (mode == PaymentMode.debito) method = "debit_card";
+    if (mode == PaymentMode.pix) method = "pix";
+
     try {
+      final auth = base64Encode(utf8.encode('$apiKey:'));
+      
       final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic $auth',
+        },
         body: jsonEncode({
-          'valor': (amount * 100).toInt(),
-          'metodo': mode.name, // 'debito', 'credito' ou 'pix'
+          "items": [
+            {
+              "amount": amountInCents,
+              "description": "Venda ERP UnifyTechXenos",
+              "quantity": 1
+            }
+          ],
+          "payments": [
+            {
+              "payment_method": method,
+              "poi_payment_settings": {
+                "terminal_id": terminalId
+              }
+            }
+          ]
         }),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return PaymentResponse(
           success: true,
-          transactionId: data['nsu'],
-          cardBrand: data['bandeira'],
-          message: "Aprovado via Stone",
+          transactionId: data['id'],
+          message: "Ordem enviada para maquininha!",
         );
       } else {
-        return PaymentResponse(success: false, message: "Erro Stone Bridge");
+        final error = jsonDecode(response.body);
+        return PaymentResponse(
+          success: false, 
+          message: "Erro Stone: ${error['message'] ?? 'Falha na transação'}"
+        );
       }
     } catch (e) {
-      return PaymentResponse(success: false, message: "Sem comunicação com Stone Bridge");
+      return PaymentResponse(success: false, message: "Erro de conexão: $e");
     }
   }
 

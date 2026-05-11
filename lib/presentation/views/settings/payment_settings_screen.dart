@@ -6,6 +6,7 @@ import 'package:unifytechxenoscaixa/presentation/providers/payment_provider.dart
 import 'package:unifytechxenoscaixa/presentation/widgets/glass_button.dart';
 import 'package:unifytechxenoscaixa/presentation/widgets/app_snackbar.dart';
 import 'package:unifytechxenoscaixa/core/services/payment/providers/mercado_pago_provider.dart';
+import 'package:unifytechxenoscaixa/core/services/payment/providers/paygo_provider.dart';
 
 class PaymentSettingsScreen extends ConsumerStatefulWidget {
   const PaymentSettingsScreen({super.key});
@@ -206,7 +207,9 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
       ];
     } else if (_selectedType == PaymentProviderType.stone) {
       return [
-        _buildTextField('ip', 'IP da Máquina/Bridge (ex: localhost)'),
+        _buildTextField('apiKey', 'Secret Key (Stone/Pagar.me)', isPassword: true),
+        const SizedBox(height: 16),
+        _buildTextField('terminalId', 'Serial Number (Maquininha Ton)'),
       ];
     } else if (_selectedType == PaymentProviderType.tef) {
       return [
@@ -230,12 +233,113 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
         const SizedBox(height: 16),
         _buildTextField('port', 'Porta do Software (Padrão 8080)'),
         const SizedBox(height: 16),
-        _buildTextField('cnpj', 'CNPJ da Instalação (Sandbox)'),
+        _buildTextField('cnpj', 'CNPJ/CPF da Instalação (Sandbox)'),
         const SizedBox(height: 16),
-        _buildTextField('pontoCaptura', 'Ponto de Captura (PDC)'),
+        _buildTextField('pontoCaptura', 'Ponto de Captura (PDC/Terminal)'),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _isSearching ? null : _testPayGoConnection,
+                icon: const Icon(Icons.sync_rounded),
+                label: const Text('Testar Conexão'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: const BorderSide(color: AppTheme.primaryColor),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _isSearching ? null : _openPayGoAdmin,
+                icon: const Icon(Icons.admin_panel_settings_rounded),
+                label: const Text('Menu Admin'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
       ];
     }
     return [];
+  }
+
+  Future<void> _testPayGoConnection() async {
+    final host = _controllers['host']?.text ?? 'localhost';
+    final port = _controllers['port']?.text ?? '8080';
+    
+    setState(() => _isSearching = true);
+    
+    try {
+      final provider = PayGoProvider(
+        host: host,
+        port: port,
+        cnpj: '',
+        pontoCaptura: '',
+      );
+      
+      final ok = await provider.testConnection();
+      
+      if (!mounted) return;
+      setState(() => _isSearching = false);
+      
+      if (ok) {
+        AppSnackbar.success(context, 'Conexão com PayGo Bridge estabelecida!');
+      } else {
+        AppSnackbar.error(context, 'O Bridge na porta $port respondeu, mas os caminhos /venda ou /v1/venda não existem (404).');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSearching = false);
+        AppSnackbar.error(context, 'Erro de conexão: Verifique se o software PayGo está aberto na porta $port. (Erro: $e)');
+      }
+    }
+  }
+
+  Future<void> _openPayGoAdmin() async {
+    final host = _controllers['host']?.text ?? 'localhost';
+    final port = _controllers['port']?.text ?? '8080';
+    final cnpj = _controllers['cnpj']?.text ?? '';
+    final pdc = _controllers['pontoCaptura']?.text ?? '';
+    
+    if (cnpj.isEmpty || pdc.isEmpty) {
+      AppSnackbar.warning(context, 'Preencha o CNPJ e o PDC para abrir o menu admin.');
+      return;
+    }
+
+    setState(() => _isSearching = true);
+    
+    try {
+      final provider = PayGoProvider(
+        host: host,
+        port: port,
+        cnpj: cnpj,
+        pontoCaptura: pdc,
+      );
+      
+      // Mostra snackbar de aviso pois isso abre uma tela externa
+      AppSnackbar.warning(context, 'Aguardando o menu administrativo no PayGo...');
+      
+      final result = await provider.openAdminMenu();
+      
+      if (!mounted) return;
+      setState(() => _isSearching = false);
+      
+      if (result.success) {
+        AppSnackbar.success(context, result.message ?? 'Operação administrativa concluída.');
+      } else {
+        AppSnackbar.error(context, result.message ?? 'Erro ao abrir menu admin.');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSearching = false);
+        AppSnackbar.error(context, 'Erro ao abrir menu admin: $e');
+      }
+    }
   }
 
   Future<void> _searchDevices() async {

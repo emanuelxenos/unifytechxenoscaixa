@@ -25,13 +25,11 @@ class PayGoProvider implements CardPaymentProvider {
     PaymentMode mode, {
     void Function(PaymentResponse)? onStatusUpdate,
   }) async {
-    // No Sandbox da PayGo, valores com centavos são negados.
-    // Vamos arredondar ou validar se o usuário for usar sandbox.
     final int valorCentavos = (amount * 100).round();
     
-    final url = Uri.parse('http://$host:$port/venda');
+    // Tentando o padrão /v1/venda
+    final url = Uri.parse('http://$host:$port/v1/venda');
 
-    // Mapeia o modo para o padrão PayGo Web
     String meioPagamento = "CREDITO";
     if (mode == PaymentMode.debito) meioPagamento = "DEBITO";
     if (mode == PaymentMode.pix) meioPagamento = "PIX";
@@ -49,6 +47,50 @@ class PayGoProvider implements CardPaymentProvider {
       }
     };
 
+    return _sendRequest(url, body, onStatusUpdate: onStatusUpdate);
+  }
+
+  /// Tenta uma conexão básica com o Bridge
+  Future<bool> testConnection() async {
+    // Testamos os dois caminhos mais comuns
+    final paths = ['/v1/venda', '/venda'];
+    
+    for (var path in paths) {
+      try {
+        final url = Uri.parse('http://$host:$port$path');
+        final response = await http.get(url).timeout(const Duration(seconds: 2));
+        // Se retornar 200, 401 ou 405, o caminho existe. Se for 404, não existe.
+        if (response.statusCode != 404 && response.statusCode != 0) {
+          return true;
+        }
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  /// Abre o menu administrativo do PayGo
+  Future<PaymentResponse> openAdminMenu({void Function(PaymentResponse)? onStatusUpdate}) async {
+    final url = Uri.parse('http://$host:$port/v1/venda');
+    final body = {
+      "identificacao": {
+        "pontoCaptura": pontoCaptura,
+        "cnpj": cnpj.replaceAll(RegExp(r'[^0-9]'), ''),
+      },
+      "venda": {
+        "tipoOperacao": "ADMINISTRATIVO",
+        "valorTotal": "0",
+        "numeroControle": DateTime.now().millisecondsSinceEpoch.toString(),
+      }
+    };
+
+    return _sendRequest(url, body, onStatusUpdate: onStatusUpdate);
+  }
+
+  Future<PaymentResponse> _sendRequest(
+    Uri url, 
+    Map<String, dynamic> body, {
+    void Function(PaymentResponse)? onStatusUpdate,
+  }) async {
     try {
       if (onStatusUpdate != null) {
         onStatusUpdate(PaymentResponse(success: false, message: "Aguardando interação no Pinpad..."));
@@ -62,38 +104,38 @@ class PayGoProvider implements CardPaymentProvider {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print('DEBUG PayGo Response: $data');
         
-        // O PayGo Web retorna sucesso se o campo 'resultado' for 0
         if (data['resultado'] == 0 || data['status'] == 'CONFIRMADA') {
           return PaymentResponse(
             success: true,
             transactionId: data['nsu'] ?? data['id_transacao'],
             cardBrand: data['bandeira'],
-            message: "Aprovado via PayGo",
+            message: data['mensagem'] ?? "Operação realizada com sucesso",
           );
         } else {
           return PaymentResponse(
             success: false,
-            message: data['mensagem'] ?? "Transação negada pela PayGo",
+            message: data['mensagem'] ?? "Operação negada ou cancelada",
           );
         }
       } else {
         return PaymentResponse(
           success: false,
-          message: "Erro na API PayGo (${response.statusCode})",
+          message: "Erro na API PayGo (${response.statusCode}) em ${url.path}",
         );
       }
     } catch (e) {
       return PaymentResponse(
         success: false,
-        message: "Sem conexão com o PayGo Bridge ($host:$port). Verifique se o software está aberto.",
+        message: "Sem conexão com o PayGo Bridge em $url. Verifique se o software está aberto.",
       );
     }
   }
 
   @override
   Future<bool> cancelTransaction(String transactionId) async {
-    final url = Uri.parse('http://$host:$port/cancelamento');
+    final url = Uri.parse('http://$host:$port/v1/cancelamento');
     try {
       final body = {
         "identificacao": {

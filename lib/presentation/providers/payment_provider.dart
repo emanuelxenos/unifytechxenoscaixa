@@ -76,7 +76,8 @@ class PaymentNotifier extends _$PaymentNotifier {
         break;
       case PaymentProviderType.stone:
         _cachedProvider = StoneProvider(
-          bridgeIp: s.config['ip'] ?? 'localhost',
+          apiKey: s.config['apiKey'] ?? '',
+          terminalId: s.config['terminalId'] ?? '',
         );
         break;
       case PaymentProviderType.tef:
