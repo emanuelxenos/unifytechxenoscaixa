@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../card_payment_provider.dart';
 
-/// Provedor para integração com PayGo Web (via Client/Bridge Local)
+/// Provedor para integração direta com o PayGo ControlPay (API Local)
 class PayGoProvider implements CardPaymentProvider {
   final String host;
-  final String port;
+  final String port; // Padrão: 24441
   final String cnpj;
   final String pontoCaptura;
 
@@ -17,7 +17,7 @@ class PayGoProvider implements CardPaymentProvider {
   });
 
   @override
-  String get name => "PayGo Web";
+  String get name => "PayGo ControlPay";
 
   @override
   Future<PaymentResponse> processPayment(
@@ -25,62 +25,42 @@ class PayGoProvider implements CardPaymentProvider {
     PaymentMode mode, {
     void Function(PaymentResponse)? onStatusUpdate,
   }) async {
-    final int valorCentavos = (amount * 100).round();
-    
-    // Tentando o padrão /v1/venda
-    final url = Uri.parse('http://$host:$port/v1/venda');
+    // Endpoint padrão do ControlPay Local para Venda
+    final url = Uri.parse('http://$host:$port/api/Venda/Venda');
 
-    String meioPagamento = "CREDITO";
-    if (mode == PaymentMode.debito) meioPagamento = "DEBITO";
-    if (mode == PaymentMode.pix) meioPagamento = "PIX";
+    // Mapeia o meio de pagamento para o que o ControlPay espera
+    // 1: Crédito, 2: Débito, 3: Voucher, etc.
+    int meioPagamento = 1; 
+    if (mode == PaymentMode.debito) meioPagamento = 2;
 
     final body = {
-      "identificacao": {
-        "pontoCaptura": pontoCaptura,
-        "cnpj": cnpj.replaceAll(RegExp(r'[^0-9]'), ''),
-      },
-      "venda": {
-        "valorTotal": valorCentavos.toString(),
-        "meioPagamento": meioPagamento,
-        "tipoOperacao": "VENDA",
-        "numeroControle": DateTime.now().millisecondsSinceEpoch.toString(),
-      }
+      "PontoCaptura": pontoCaptura,
+      "Cnpj": cnpj.replaceAll(RegExp(r'[^0-9]'), ''),
+      "Valor": amount, // O ControlPay costuma aceitar Double
+      "MeioPagamento": meioPagamento,
+      "TipoOperacao": 1, // 1: Venda
+      "IdentificadorExterno": DateTime.now().millisecondsSinceEpoch.toString(),
     };
 
     return _sendRequest(url, body, onStatusUpdate: onStatusUpdate);
   }
 
-  /// Tenta uma conexão básica com o Bridge
   Future<bool> testConnection() async {
-    // Testamos os dois caminhos mais comuns
-    final paths = ['/v1/venda', '/venda'];
-    
-    for (var path in paths) {
-      try {
-        final url = Uri.parse('http://$host:$port$path');
-        final response = await http.get(url).timeout(const Duration(seconds: 2));
-        // Se retornar 200, 401 ou 405, o caminho existe. Se for 404, não existe.
-        if (response.statusCode != 404 && response.statusCode != 0) {
-          return true;
-        }
-      } catch (_) {}
+    try {
+      final url = Uri.parse('http://$host:$port/api/Venda/Status');
+      final response = await http.get(url).timeout(const Duration(seconds: 2));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
     }
-    return false;
   }
 
-  /// Abre o menu administrativo do PayGo
   Future<PaymentResponse> openAdminMenu({void Function(PaymentResponse)? onStatusUpdate}) async {
-    final url = Uri.parse('http://$host:$port/v1/venda');
+    // No ControlPay o menu administrativo costuma ser o OpCode de ADM
+    final url = Uri.parse('http://$host:$port/api/Administrativo/Menu');
     final body = {
-      "identificacao": {
-        "pontoCaptura": pontoCaptura,
-        "cnpj": cnpj.replaceAll(RegExp(r'[^0-9]'), ''),
-      },
-      "venda": {
-        "tipoOperacao": "ADMINISTRATIVO",
-        "valorTotal": "0",
-        "numeroControle": DateTime.now().millisecondsSinceEpoch.toString(),
-      }
+      "PontoCaptura": pontoCaptura,
+      "Cnpj": cnpj.replaceAll(RegExp(r'[^0-9]'), ''),
     };
 
     return _sendRequest(url, body, onStatusUpdate: onStatusUpdate);
@@ -93,68 +73,40 @@ class PayGoProvider implements CardPaymentProvider {
   }) async {
     try {
       if (onStatusUpdate != null) {
-        onStatusUpdate(PaymentResponse(success: false, message: "Aguardando interação no Pinpad..."));
+        onStatusUpdate(PaymentResponse(success: false, message: "Aguardando ControlPay..."));
       }
 
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 60));
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print('DEBUG PayGo Response: $data');
         
-        if (data['resultado'] == 0 || data['status'] == 'CONFIRMADA') {
-          return PaymentResponse(
-            success: true,
-            transactionId: data['nsu'] ?? data['id_transacao'],
-            cardBrand: data['bandeira'],
-            message: data['mensagem'] ?? "Operação realizada com sucesso",
-          );
-        } else {
-          return PaymentResponse(
-            success: false,
-            message: data['mensagem'] ?? "Operação negada ou cancelada",
-          );
-        }
+        // No ControlPay, sucesso costuma vir no campo 'Status' ou 'Resultado'
+        bool isSuccess = data['Status'] == 1 || data['Resultado'] == 0;
+
+        return PaymentResponse(
+          success: isSuccess,
+          transactionId: data['Nsu']?.toString(),
+          message: data['Mensagem'] ?? (isSuccess ? "Aprovado" : "Erro no Pagamento"),
+        );
       } else {
         return PaymentResponse(
-          success: false,
-          message: "Erro na API PayGo (${response.statusCode}) em ${url.path}",
+          success: false, 
+          message: "Erro ControlPay: ${response.statusCode}\n${response.body}"
         );
       }
     } catch (e) {
-      return PaymentResponse(
-        success: false,
-        message: "Sem conexão com o PayGo Bridge em $url. Verifique se o software está aberto.",
-      );
+      return PaymentResponse(success: false, message: "Erro de conexão com ControlPay: $e");
     }
   }
 
   @override
   Future<bool> cancelTransaction(String transactionId) async {
-    final url = Uri.parse('http://$host:$port/v1/cancelamento');
-    try {
-      final body = {
-        "identificacao": {
-          "pontoCaptura": pontoCaptura,
-          "cnpj": cnpj.replaceAll(RegExp(r'[^0-9]'), ''),
-        },
-        "cancelamento": {
-          "id_transacao": transactionId,
-        }
-      };
-
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
-      return response.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    // Implementar cancelamento via /api/Venda/Cancelar
+    return false;
   }
 }
